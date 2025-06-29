@@ -53,13 +53,13 @@ export default function Login() {
                     >
                         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                             <img
-                                src="/logo-siap-seleksi.png"
-                                alt="Siap Seleksi"
+                                src="/logo-zona-lulus.png"
+                                alt="Zona Lulus"
                                 width={window.innerWidth < 768 ? "80" : "120"}
                                 style={{ marginBottom: '16px' }}
                             />
                             <Title level={window.innerWidth < 768 ? 3 : 2} style={{ color: '#1890ff', marginBottom: '8px' }}>
-                                Siap Seleksi
+                                Zona Lulus
                             </Title>
                             <Text type="secondary" style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
                                 Persiapkan diri untuk seleksi TNI/POLRI & Kedinasan

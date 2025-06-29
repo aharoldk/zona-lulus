@@ -559,12 +559,12 @@ export default function Dashboard() {
                     borderBottom: '1px solid #f0f0f0'
                 }}>
                     {collapsed && !isMobile ? (
-                        <img src="/logo-siap-seleksi.png" alt="Logo" width="32" />
+                        <img src="/logo-zona-lulus.png" alt="Logo" width="32" />
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <img src="/logo-siap-seleksi.png" alt="Logo" width="32" style={{ marginRight: '12px' }} />
+                            <img src="/logo-zona-lulus.png" alt="Logo" width="32" style={{ marginRight: '12px' }} />
                             <Title level={4} style={{ margin: 0, color: '#2c3e50', fontSize: isMobile ? '16px' : '18px' }}>
-                                Siap Seleksi
+                                Zona Lulus
                             </Title>
                         </div>
                     )}

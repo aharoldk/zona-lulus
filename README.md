@@ -1,4 +1,4 @@
-# 🎯 Siap Seleksi - TNI/POLRI Tryout System
+# 🎯 Zona Lulus - TNI/POLRI Tryout System
 
 A comprehensive online tryout platform for TNI/POLRI and civil service entrance exam preparation, built with Laravel and React.
 
@@ -200,7 +200,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Team
 
-**Siap Seleksi Development Team**
+**Zona Lulus Development Team**
 - Full-stack development with Laravel & React
 - TNI/POLRI exam preparation expertise
 - Mobile-responsive design specialists
@@ -208,7 +208,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For support and questions:
-- **Email**: support@siapseleksi.com
+- **Email**: support@zonalulus.com
 - **Documentation**: Available in `/docs` directory
 - **Issues**: Use GitHub Issues for bug reports
 

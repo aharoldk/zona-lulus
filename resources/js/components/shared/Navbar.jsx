@@ -13,7 +13,7 @@ export default function Navbar() {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="text-xl font-bold text-gray-900">
-                Ruang Casis
+                Zona Lulus
               </Link>
             </div>
           </div>
