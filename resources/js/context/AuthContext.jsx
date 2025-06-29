@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
         const initializeAuth = async () => {
             if (token) {
                 try {
-                    const { data } = await axios.get('/api/me');
+                    const { data } = await axios.get('/me');
                     setUser(data);
                 } catch (error) {
                     localStorage.removeItem('token');
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
 
     const login = async (credentials) => {
         try {
-            const { data } = await axios.post('/api/login', credentials);
+            const { data } = await axios.post('/login', credentials);
             localStorage.setItem('token', data.access_token);
             setToken(data.access_token);
             setUser(data.user);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
 
     const register = async (userData) => {
         try {
-            const { data } = await axios.post('/api/register', userData);
+            const { data } = await axios.post('/register', userData);
             localStorage.setItem('token', data.access_token);
             setToken(data.access_token);
             setUser(data.user);
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         try {
-            await axios.post('/api/logout');
+            await axios.post('/logout');
         } finally {
             localStorage.removeItem('token');
             setToken(null);

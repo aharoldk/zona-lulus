@@ -2,10 +2,18 @@ import React, { useState } from 'react';
 import { Card, Row, Col, Button, Tag, Typography, Space, Statistic, Progress, List, Avatar, Tabs } from 'antd';
 import { PlayCircleOutlined, TrophyOutlined, ClockCircleOutlined, UserOutlined, FileTextOutlined } from '@ant-design/icons';
 
+// Import the new components
+import Tryout from './Tryout';
+import TryoutResult from './TryoutResult';
+
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 
 export default function TryoutTNI() {
+    const [currentView, setCurrentView] = useState('list'); // 'list', 'tryout', 'result'
+    const [selectedTryout, setSelectedTryout] = useState(null);
+    const [tryoutResult, setTryoutResult] = useState(null);
+
     const tryoutPackages = [
         {
             id: 1,
@@ -84,6 +92,61 @@ export default function TryoutTNI() {
         return price === 'Gratis' ? 'green' : 'blue';
     };
 
+    // Handle start tryout
+    const handleStartTryout = (tryout) => {
+        setSelectedTryout(tryout);
+        setCurrentView('tryout');
+    };
+
+    // Handle back to list
+    const handleBackToList = () => {
+        setCurrentView('list');
+        setSelectedTryout(null);
+        setTryoutResult(null);
+    };
+
+    // Handle tryout finish
+    const handleTryoutFinish = (result) => {
+        setTryoutResult(result);
+        setCurrentView('result');
+    };
+
+    // Handle retake tryout
+    const handleRetakeTryout = () => {
+        setCurrentView('tryout');
+        setTryoutResult(null);
+    };
+
+    // Handle view discussion
+    const handleViewDiscussion = () => {
+        // This would navigate to discussion/review page
+        console.log('View discussion clicked');
+    };
+
+    // Render based on current view
+    if (currentView === 'tryout') {
+        return (
+            <Tryout
+                tryoutData={selectedTryout}
+                onBack={handleBackToList}
+                onFinish={handleTryoutFinish}
+            />
+        );
+    }
+
+    if (currentView === 'result') {
+        return (
+            <TryoutResult
+                result={tryoutResult}
+                tryoutData={selectedTryout}
+                onRetake={handleRetakeTryout}
+                onBackToList={handleBackToList}
+                onViewDiscussion={handleViewDiscussion}
+            />
+        );
+    }
+
+    // Default list view
     return (
         <div>
             <Title level={2}>Tryout TNI</Title>
@@ -100,7 +163,11 @@ export default function TryoutTNI() {
                                     title={tryout.title}
                                     extra={<Tag color={getPriceColor(tryout.price)}>{tryout.price}</Tag>}
                                     actions={[
-                                        <Button type="primary" icon={<PlayCircleOutlined />}>
+                                        <Button
+                                            type="primary"
+                                            icon={<PlayCircleOutlined />}
+                                            onClick={() => handleStartTryout(tryout)}
+                                        >
                                             Mulai Tryout
                                         </Button>
                                     ]}
@@ -163,8 +230,15 @@ export default function TryoutTNI() {
                         renderItem={(attempt) => (
                             <List.Item
                                 actions={[
-                                    <Button type="link">Lihat Pembahasan</Button>,
-                                    <Button type="primary">Ulangi</Button>
+                                    <Button type="link" onClick={handleViewDiscussion}>
+                                        Lihat Pembahasan
+                                    </Button>,
+                                    <Button type="primary" onClick={() => {
+                                        const tryout = tryoutPackages.find(t => t.title === attempt.title);
+                                        if (tryout) handleStartTryout(tryout);
+                                    }}>
+                                        Ulangi
+                                    </Button>
                                 ]}
                             >
                                 <List.Item.Meta

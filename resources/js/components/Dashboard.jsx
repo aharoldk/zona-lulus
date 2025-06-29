@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
     Layout,
@@ -50,6 +50,21 @@ export default function Dashboard() {
     const { user, logout } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const [selectedKey, setSelectedKey] = useState('1');
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Check if device is mobile
+    useEffect(() => {
+        const checkIsMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+            if (window.innerWidth < 768) {
+                setCollapsed(true);
+            }
+        };
+
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
 
     const handleLogout = () => {
         logout();
@@ -313,21 +328,24 @@ export default function Dashboard() {
             case '1':
                 return (
                     <div>
-                        <Title level={2} style={{ marginBottom: '24px' }}>
+                        <Title level={2} style={{ marginBottom: '24px', fontSize: isMobile ? '20px' : '24px' }}>
                             Selamat datang, {user?.name}! 👋
                         </Title>
 
-                        {/* Statistics Cards */}
+                        {/* Statistics Cards - Mobile Responsive */}
                         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
                             {stats.map((stat, index) => (
-                                <Col xs={24} sm={12} md={6} key={index}>
-                                    <Card>
+                                <Col xs={12} sm={12} md={6} key={index}>
+                                    <Card size={isMobile ? "small" : "default"}>
                                         <Statistic
                                             title={stat.title}
                                             value={stat.value}
                                             suffix={stat.suffix}
                                             prefix={stat.icon}
-                                            valueStyle={{ fontSize: '24px', fontWeight: 'bold' }}
+                                            valueStyle={{
+                                                fontSize: isMobile ? '18px' : '24px',
+                                                fontWeight: 'bold'
+                                            }}
                                         />
                                     </Card>
                                 </Col>
@@ -337,7 +355,11 @@ export default function Dashboard() {
                         <Row gutter={[16, 16]}>
                             {/* Progress Section */}
                             <Col xs={24} lg={12}>
-                                <Card title="Progress Belajar" extra={<Text type="secondary">Minggu ini</Text>}>
+                                <Card
+                                    title="Progress Belajar"
+                                    extra={<Text type="secondary">Minggu ini</Text>}
+                                    size={isMobile ? "small" : "default"}
+                                >
                                     <Space direction="vertical" style={{ width: '100%' }}>
                                         <div>
                                             <Text>Matematika Dasar</Text>
@@ -357,7 +379,11 @@ export default function Dashboard() {
 
                             {/* Recent Activities */}
                             <Col xs={24} lg={12}>
-                                <Card title="Aktivitas Terbaru" extra={<Text type="secondary">7 hari terakhir</Text>}>
+                                <Card
+                                    title="Aktivitas Terbaru"
+                                    extra={<Text type="secondary">7 hari terakhir</Text>}
+                                    size={isMobile ? "small" : "default"}
+                                >
                                     <List
                                         dataSource={recentActivities}
                                         renderItem={(item) => (
@@ -371,10 +397,12 @@ export default function Dashboard() {
                                                             }
                                                         />
                                                     }
-                                                    title={item.title}
+                                                    title={<span style={{ fontSize: isMobile ? '14px' : '16px' }}>{item.title}</span>}
                                                     description={
                                                         <div>
-                                                            <Text type="secondary">{item.description}</Text>
+                                                            <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                                                                {item.description}
+                                                            </Text>
                                                             <br />
                                                             <Text type="secondary" style={{ fontSize: '12px' }}>
                                                                 {item.time}
@@ -508,9 +536,17 @@ export default function Dashboard() {
                 trigger={null}
                 collapsible
                 collapsed={collapsed}
+                breakpoint="lg"
+                collapsedWidth={isMobile ? 0 : 80}
+                width={isMobile ? 250 : 200}
                 style={{
                     background: '#fff',
                     boxShadow: '2px 0 8px 0 rgba(29,35,41,.05)',
+                    position: isMobile ? 'fixed' : 'relative',
+                    height: isMobile ? '100vh' : 'auto',
+                    zIndex: isMobile ? 1000 : 'auto',
+                    left: isMobile && collapsed ? '-250px' : '0',
+                    transition: 'all 0.2s',
                 }}
             >
                 {/* Logo */}
@@ -522,12 +558,12 @@ export default function Dashboard() {
                     padding: collapsed ? 0 : '0 24px',
                     borderBottom: '1px solid #f0f0f0'
                 }}>
-                    {collapsed ? (
+                    {collapsed && !isMobile ? (
                         <img src="/logo-siap-seleksi.png" alt="Logo" width="32" />
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <img src="/logo-siap-seleksi.png" alt="Logo" width="32" style={{ marginRight: '12px' }} />
-                            <Title level={4} style={{ margin: 0, color: '#2c3e50' }}>
+                            <Title level={4} style={{ margin: 0, color: '#2c3e50', fontSize: isMobile ? '16px' : '18px' }}>
                                 Siap Seleksi
                             </Title>
                         </div>
@@ -540,15 +576,36 @@ export default function Dashboard() {
                     selectedKeys={[selectedKey]}
                     items={menuItems}
                     style={{ border: 'none', marginTop: '16px' }}
-                    onClick={({ key }) => setSelectedKey(key)}
+                    onClick={({ key }) => {
+                        setSelectedKey(key);
+                        if (isMobile) {
+                            setCollapsed(true);
+                        }
+                    }}
                 />
             </Sider>
 
+            {/* Overlay for mobile */}
+            {isMobile && !collapsed && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                        zIndex: 999,
+                    }}
+                    onClick={() => setCollapsed(true)}
+                />
+            )}
+
             {/* Main Layout */}
-            <Layout>
+            <Layout style={{ marginLeft: 0, transition: 'all 0.2s' }}>
                 {/* Header */}
                 <Header style={{
-                    padding: '0 16px',
+                    padding: isMobile ? '0 12px' : '0 16px',
                     background: '#fff',
                     borderBottom: '1px solid #f0f0f0',
                     display: 'flex',
@@ -562,10 +619,10 @@ export default function Dashboard() {
                         style={{ fontSize: '16px', width: 64, height: 64 }}
                     />
 
-                    <Space size="middle">
+                    <Space size={isMobile ? "small" : "middle"}>
                         {/* Notifications */}
                         <Badge count={3} size="small">
-                            <Button type="text" icon={<BellOutlined />} shape="circle" />
+                            <Button type="text" icon={<BellOutlined />} shape="circle" size={isMobile ? "small" : "default"} />
                         </Badge>
 
                         {/* User Menu */}
@@ -575,9 +632,9 @@ export default function Dashboard() {
                             trigger={['click']}
                         >
                             <Button type="text" style={{ height: 'auto', padding: '4px 8px' }}>
-                                <Space>
-                                    <Avatar size="small" icon={<UserOutlined />} />
-                                    <span style={{ fontWeight: '500' }}>{user?.name}</span>
+                                <Space size="small">
+                                    <Avatar size={isMobile ? "small" : "default"} icon={<UserOutlined />} />
+                                    {!isMobile && <span style={{ fontWeight: '500' }}>{user?.name}</span>}
                                 </Space>
                             </Button>
                         </Dropdown>
@@ -586,8 +643,8 @@ export default function Dashboard() {
 
                 {/* Content */}
                 <Content style={{
-                    margin: '24px 16px',
-                    padding: '24px',
+                    margin: isMobile ? '12px 8px' : '24px 16px',
+                    padding: isMobile ? '16px' : '24px',
                     background: '#fff',
                     borderRadius: '8px',
                     minHeight: 280,

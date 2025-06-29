@@ -12,16 +12,15 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone')->unique();
+            $table->string('phone');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('avatar')->nullable();
             $table->date('birth_date')->nullable();
             $table->string('education')->nullable();
             $table->text('address')->nullable();
             $table->rememberToken();
             $table->timestamps();
-            
+
             // PostgreSQL specific indexes
             $table->rawIndex("to_tsvector('english', name)", 'users_name_search');
             $table->rawIndex("to_tsvector('english', email)", 'users_email_search');
