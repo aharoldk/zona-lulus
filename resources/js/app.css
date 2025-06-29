@@ -1,0 +1,15 @@
+
+:root {
+  --siapseleksi-primary: #2c3e50;
+  --siapseleksi-secondary: #e74c3c;
+  --siapseleksi-accent: #3498db;
+}
+
+.btn-primary {
+  background-color: var(--siapseleksi-primary);
+  border-color: var(--siapseleksi-primary);
+}
+
+.text-primary {
+  color: var(--siapseleksi-primary) !important;
+}
