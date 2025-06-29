@@ -1,449 +1,291 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Card,
-    Button,
-    Radio,
-    Typography,
-    Progress,
-    Space,
-    Alert,
-    Modal,
-    Row,
-    Col,
-    Tag,
-    Divider,
-    message,
-    Spin
-} from 'antd';
-import {
-    ClockCircleOutlined,
-    ArrowLeftOutlined,
-    ArrowRightOutlined
-} from '@ant-design/icons';
+import { Card, Row, Col, Button, Tag, Typography, Space, Statistic, Progress, List, Avatar, Tabs, Spin, Alert } from 'antd';
+import { PlayCircleOutlined, TrophyOutlined, ClockCircleOutlined, UserOutlined, FileTextOutlined } from '@ant-design/icons';
 import api from '../../utils/axios';
 
-const { Title, Text, Paragraph } = Typography;
-const { confirm } = Modal;
+// Import the new components
+import TryoutTest from './TryoutTest';
+import TryoutResult from './TryoutResult';
 
-export default function Tryout({ tryoutData, onBack, onFinish }) {
-    const [currentQuestion, setCurrentQuestion] = useState(0);
-    const [answers, setAnswers] = useState({});
-    const [timeLeft, setTimeLeft] = useState(tryoutData?.duration * 60 || 7200);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [questions, setQuestions] = useState([]);
+const { Title, Text, Paragraph } = Typography;
+const { TabPane } = Tabs;
+
+export default function Tryout() {
+    const [currentView, setCurrentView] = useState('list'); // 'list', 'tryout', 'result'
+    const [selectedTryout, setSelectedTryout] = useState(null);
+    const [tryoutResult, setTryoutResult] = useState(null);
+    const [tryoutPackages, setTryoutPackages] = useState([]);
+    const [myAttempts, setMyAttempts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Fetch questions from database
+    // Fetch tryout packages from API
     useEffect(() => {
-        const fetchQuestions = async () => {
-            try {
-                setLoading(true);
-                const response = await api.get('/questions/1'); // testId = 1 for TNI tryout
-
-                if (response.data.success) {
-                    setQuestions(response.data.data);
-                } else {
-                    setError('Failed to load questions');
-                }
-            } catch (err) {
-                console.error('Error fetching questions:', err);
-                setError('Failed to connect to server');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchQuestions();
+        fetchTryoutPackages();
+        fetchMyAttempts();
     }, []);
 
-    // Timer countdown
-    useEffect(() => {
-        if (questions.length === 0) return; // Don't start timer until questions are loaded
-
-        const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    handleTimeUp();
-                    return 0;
-                }
-                return prev - 1;
+    const fetchTryoutPackages = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/tryouts', {
+                params: { category: 'tni' } // Filter for TNI tryouts
             });
-        }, 1000);
 
-        return () => clearInterval(timer);
-    }, [questions]);
-
-    // Format time display
-    const formatTime = (seconds) => {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    // Handle answer selection
-    const handleAnswerChange = (value) => {
-        setAnswers(prev => ({
-            ...prev,
-            [currentQuestion]: value
-        }));
-    };
-
-    // Navigate between questions
-    const goToQuestion = (index) => {
-        if (index >= 0 && index < questions.length) {
-            setCurrentQuestion(index);
+            if (response.data.success) {
+                const transformedData = response.data.data.map(test => ({
+                    id: test.id,
+                    title: test.title,
+                    description: test.description,
+                    questions: test.questions_count,
+                    duration: test.time_limit,
+                    attempts: test.attempts_allowed,
+                    price: test.price_formatted,
+                    difficulty: test.difficulty,
+                    participants: test.participants_count,
+                    averageScore: test.average_score,
+                    category: test.category,
+                    isActive: test.is_active,
+                    isFree: test.is_free,
+                    showResult: test.show_result,
+                    randomizeQuestions: test.randomize_questions
+                }));
+                setTryoutPackages(transformedData);
+            } else {
+                setError('Failed to load tryout packages');
+            }
+        } catch (err) {
+            console.error('Error fetching tryout packages:', err);
+            setError('Failed to connect to server');
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Handle time up
-    const handleTimeUp = () => {
-        message.warning('Waktu habis! Tryout akan otomatis diselesaikan.');
-        handleSubmit();
-    };
+    const fetchMyAttempts = async () => {
+        try {
+            const response = await api.get('/tryouts/my-attempts');
 
-    // Handle submit tryout
-    const handleSubmit = () => {
-        setIsSubmitting(true);
-
-        // Calculate score
-        let correct = 0;
-        questions.forEach((question, index) => {
-            if (answers[index] === question.correct_answer) {
-                correct++;
+            if (response.data.success) {
+                const transformedAttempts = response.data.data
+                    .filter(attempt => attempt.category === 'tni') // Filter TNI attempts
+                    .map(attempt => ({
+                        id: attempt.id,
+                        title: attempt.test_title,
+                        score: Math.round(attempt.score),
+                        maxScore: 100,
+                        duration: `${Math.round(attempt.time_taken / 60)} menit`,
+                        date: attempt.date_formatted,
+                        rank: attempt.rank,
+                        status: attempt.status,
+                        testId: attempt.test_id
+                    }));
+                setMyAttempts(transformedAttempts);
             }
-        });
-
-        const score = Math.round((correct / questions.length) * 100);
-
-        setTimeout(() => {
-            setIsSubmitting(false);
-            onFinish({
-                score,
-                totalQuestions: questions.length,
-                answeredQuestions: Object.keys(answers).length,
-                correctAnswers: correct,
-                timeUsed: (tryoutData?.duration * 60) - timeLeft,
-                answers
-            });
-        }, 2000);
+        } catch (err) {
+            console.error('Error fetching user attempts:', err);
+        }
     };
 
-    // Confirm submit
-    const confirmSubmit = () => {
-        const unansweredCount = questions.length - Object.keys(answers).length;
-
-        confirm({
-            title: 'Selesaikan Tryout',
-            content: unansweredCount > 0
-                ? `Anda masih memiliki ${unansweredCount} soal yang belum dijawab. Yakin ingin menyelesaikan tryout?`
-                : 'Yakin ingin menyelesaikan tryout ini?',
-            onOk: handleSubmit,
-            okText: 'Ya, Selesaikan',
-            cancelText: 'Batal'
-        });
+    const getDifficultyColor = (difficulty) => {
+        switch (difficulty) {
+            case 'Mudah': return 'green';
+            case 'Menengah': return 'orange';
+            case 'Sulit': return 'red';
+            default: return 'default';
+        }
     };
 
-    // Handle back confirmation
-    const handleBack = () => {
-        confirm({
-            title: 'Keluar dari Tryout',
-            content: 'Jika Anda keluar sekarang, progress akan hilang. Yakin ingin keluar?',
-            onOk: onBack,
-            okText: 'Ya, Keluar',
-            cancelText: 'Lanjut Tryout'
-        });
+    const getPriceColor = (price) => {
+        return price === 'Gratis' ? 'green' : 'blue';
     };
 
-    // Show loading spinner while fetching questions
+    // Handle start tryout
+    const handleStartTryout = (tryout) => {
+        setSelectedTryout(tryout);
+        setCurrentView('tryout');
+    };
+
+    // Handle back to list
+    const handleBackToList = () => {
+        setCurrentView('list');
+        setSelectedTryout(null);
+        setTryoutResult(null);
+    };
+
+    // Handle tryout finish
+    const handleTryoutFinish = (result) => {
+        setTryoutResult(result);
+        setCurrentView('result');
+    };
+
+    // Handle retake tryout
+    const handleRetakeTryout = () => {
+        setCurrentView('tryout');
+        setTryoutResult(null);
+    };
+
+    // Handle view discussion
+    const handleViewDiscussion = () => {
+        // This would navigate to discussion/review page
+        console.log('View discussion clicked');
+    };
+
+    // Render based on current view
+    if (currentView === 'tryout') {
+        return (
+            <TryoutTest
+                tryoutData={selectedTryout}
+                onBack={handleBackToList}
+                onFinish={handleTryoutFinish}
+            />
+        );
+    }
+
+    if (currentView === 'result') {
+        return (
+            <TryoutResult
+                result={tryoutResult}
+                tryoutData={selectedTryout}
+                onRetake={handleRetakeTryout}
+                onBackToList={handleBackToList}
+                onViewDiscussion={handleViewDiscussion}
+            />
+        );
+    }
+
     if (loading) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '400px'
-            }}>
-                <Spin size="large" />
-                <Text style={{ marginLeft: '16px' }}>Memuat soal...</Text>
-            </div>
-        );
+        return <Spin size="large" />;
     }
 
-    // Show error if failed to load questions
     if (error) {
-        return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '400px'
-            }}>
-                <Alert
-                    message="Error"
-                    description={error}
-                    type="error"
-                    showIcon
-                    style={{ marginBottom: '16px' }}
-                />
-                <Button type="primary" onClick={onBack}>
-                    Kembali
-                </Button>
-            </div>
-        );
+        return <Alert message={error} type="error" />;
     }
 
-    // Show message if no questions found
-    if (questions.length === 0) {
-        return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '400px'
-            }}>
-                <Alert
-                    message="Tidak Ada Soal"
-                    description="Belum ada soal tersedia untuk tryout ini."
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: '16px' }}
-                />
-                <Button type="primary" onClick={onBack}>
-                    Kembali
-                </Button>
-            </div>
-        );
-    }
-
-    const currentQ = questions[currentQuestion];
-    const answeredCount = Object.keys(answers).length;
-    const progressPercent = (answeredCount / questions.length) * 100;
-    const isLastQuestion = currentQuestion === questions.length - 1;
-
+    // Default list view
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            {/* Header */}
-            <Card style={{ marginBottom: '16px' }}>
-                <Row justify="space-between" align="middle">
-                    <Col xs={24} sm={12} md={8}>
-                        <Space>
-                            <Button
-                                icon={<ArrowLeftOutlined />}
-                                onClick={handleBack}
-                                type="text"
-                            >
-                                Kembali
-                            </Button>
-                            <Title level={4} style={{ margin: 0 }}>
-                                {tryoutData?.title || 'Tryout TNI'}
-                            </Title>
-                        </Space>
-                    </Col>
-                    <Col xs={24} sm={12} md={8} style={{ textAlign: 'center' }}>
-                        <Space direction="vertical" size="small">
-                            <Text strong>Waktu Tersisa</Text>
-                            <Tag
-                                color={timeLeft < 600 ? 'red' : timeLeft < 1800 ? 'orange' : 'blue'}
-                                style={{ fontSize: '16px', padding: '4px 12px' }}
-                            >
-                                <ClockCircleOutlined /> {formatTime(timeLeft)}
-                            </Tag>
-                        </Space>
-                    </Col>
-                    <Col xs={24} sm={24} md={8} style={{ textAlign: 'right' }}>
-                        <Space direction="vertical" size="small">
-                            <Text>Progress: {answeredCount}/{questions.length}</Text>
-                            <Progress
-                                percent={progressPercent}
-                                size="small"
-                                style={{ width: '150px' }}
-                            />
-                        </Space>
-                    </Col>
-                </Row>
-            </Card>
+        <div>
+            <Title level={2}>Tryout TNI</Title>
+            <Paragraph type="secondary">
+                Latihan soal dan simulasi tes untuk persiapan masuk TNI
+            </Paragraph>
 
-            <Row gutter={16}>
-                {/* Question Panel */}
-                <Col xs={24} lg={18}>
-                    <Card
-                        title={
-                            <Space>
-                                <Text strong>Soal {currentQuestion + 1}</Text>
-                                <Tag color="blue">{currentQ?.category}</Tag>
-                            </Space>
-                        }
-                        style={{ minHeight: '400px' }}
-                    >
-                        <div style={{ marginBottom: '24px' }}>
-                            <Paragraph style={{ fontSize: '16px', lineHeight: '1.6' }}>
-                                {currentQ?.question}
-                            </Paragraph>
-                        </div>
-
-                        <Radio.Group
-                            value={answers[currentQuestion]}
-                            onChange={(e) => handleAnswerChange(e.target.value)}
-                            style={{ width: '100%' }}
-                        >
-                            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                {currentQ?.options?.map(option => (
-                                    <Radio
-                                        key={option.key}
-                                        value={option.key}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            padding: '12px',
-                                            border: '1px solid #f0f0f0',
-                                            borderRadius: '8px',
-                                            marginBottom: '8px'
-                                        }}
-                                    >
-                                        <div style={{ marginLeft: '8px' }}>
-                                            <strong>{option.key}.</strong> {option.text}
-                                        </div>
-                                    </Radio>
-                                ))}
-                            </Space>
-                        </Radio.Group>
-
-                        <Divider />
-
-                        {/* Navigation Buttons */}
-                        <Row justify="space-between" align="middle">
-                            <Col>
-                                <Button
-                                    disabled={currentQuestion === 0}
-                                    onClick={() => goToQuestion(currentQuestion - 1)}
-                                    icon={<ArrowLeftOutlined />}
+            <Tabs defaultActiveKey="available">
+                <TabPane tab="Tryout Tersedia" key="available">
+                    <Row gutter={[16, 16]}>
+                        {tryoutPackages.map(tryout => (
+                            <Col xs={24} lg={12} key={tryout.id}>
+                                <Card
+                                    title={tryout.title}
+                                    extra={<Tag color={getPriceColor(tryout.price)}>{tryout.price}</Tag>}
+                                    actions={[
+                                        <Button
+                                            type="primary"
+                                            icon={<PlayCircleOutlined />}
+                                            onClick={() => handleStartTryout(tryout)}
+                                        >
+                                            Mulai Tryout
+                                        </Button>
+                                    ]}
                                 >
-                                    Sebelumnya
-                                </Button>
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Paragraph>{tryout.description}</Paragraph>
+
+                                        <Row gutter={16}>
+                                            <Col span={12}>
+                                                <Statistic
+                                                    title="Jumlah Soal"
+                                                    value={tryout.questions}
+                                                    prefix={<FileTextOutlined />}
+                                                />
+                                            </Col>
+                                            <Col span={12}>
+                                                <Statistic
+                                                    title="Durasi"
+                                                    value={tryout.duration}
+                                                    suffix="menit"
+                                                    prefix={<ClockCircleOutlined />}
+                                                />
+                                            </Col>
+                                        </Row>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+                                            <Space>
+                                                <Tag color={getDifficultyColor(tryout.difficulty)}>
+                                                    {tryout.difficulty}
+                                                </Tag>
+                                                <Text type="secondary">
+                                                    {tryout.attempts} percobaan
+                                                </Text>
+                                            </Space>
+                                            <Space>
+                                                <UserOutlined />
+                                                <Text type="secondary">{tryout.participants} peserta</Text>
+                                            </Space>
+                                        </div>
+
+                                        <div>
+                                            <Text type="secondary">Rata-rata Skor: </Text>
+                                            <Text strong>{tryout.averageScore}%</Text>
+                                            <Progress
+                                                percent={tryout.averageScore}
+                                                size="small"
+                                                style={{ marginTop: '4px' }}
+                                            />
+                                        </div>
+                                    </Space>
+                                </Card>
                             </Col>
-                            <Col>
-                                <Space>
-                                    <Text>Soal {currentQuestion + 1} dari {questions.length}</Text>
-                                </Space>
-                            </Col>
-                            <Col>
-                                {isLastQuestion ? (
-                                    <Button
-                                        type="primary"
-                                        onClick={confirmSubmit}
-                                        loading={isSubmitting}
-                                        size="large"
-                                    >
-                                        Selesaikan Tryout
+                        ))}
+                    </Row>
+                </TabPane>
+
+                <TabPane tab="Riwayat Saya" key="history">
+                    <List
+                        dataSource={myAttempts}
+                        renderItem={(attempt) => (
+                            <List.Item
+                                actions={[
+                                    <Button type="link" onClick={handleViewDiscussion}>
+                                        Lihat Pembahasan
+                                    </Button>,
+                                    <Button type="primary" onClick={() => {
+                                        const tryout = tryoutPackages.find(t => t.title === attempt.title);
+                                        if (tryout) handleStartTryout(tryout);
+                                    }}>
+                                        Ulangi
                                     </Button>
-                                ) : (
-                                    <Button
-                                        type="primary"
-                                        onClick={() => goToQuestion(currentQuestion + 1)}
-                                        icon={<ArrowRightOutlined />}
-                                    >
-                                        Selanjutnya
-                                    </Button>
-                                )}
-                            </Col>
-                        </Row>
-                    </Card>
-                </Col>
-
-                {/* Question Navigation Panel */}
-                <Col xs={24} lg={6}>
-                    <Card title="Navigasi Soal" size="small">
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(5, 1fr)',
-                            gap: '8px',
-                            marginBottom: '16px'
-                        }}>
-                            {questions.map((_, index) => {
-                                const isAnswered = answers[index] !== undefined;
-                                const isCurrent = index === currentQuestion;
-
-                                let backgroundColor, borderColor, textColor;
-
-                                if (isCurrent) {
-                                    backgroundColor = '#1890ff';
-                                    borderColor = '#1890ff';
-                                    textColor = '#fff';
-                                } else if (isAnswered) {
-                                    backgroundColor = '#52c41a';
-                                    borderColor = '#52c41a';
-                                    textColor = '#fff';
-                                } else {
-                                    backgroundColor = '#f5f5f5';
-                                    borderColor = '#d9d9d9';
-                                    textColor = '#000';
-                                }
-
-                                return (
-                                    <Button
-                                        key={index}
-                                        size="small"
-                                        onClick={() => goToQuestion(index)}
-                                        style={{
-                                            backgroundColor,
-                                            borderColor,
-                                            color: textColor,
-                                            fontWeight: isCurrent ? 'bold' : 'normal'
-                                        }}
-                                    >
-                                        {index + 1}
-                                    </Button>
-                                );
-                            })}
-                        </div>
-
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '12px', height: '12px', backgroundColor: '#52c41a', borderRadius: '2px' }}></div>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>Terjawab</Text>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '12px', height: '12px', backgroundColor: '#1890ff', borderRadius: '2px' }}></div>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>Saat ini</Text>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '12px', height: '12px', backgroundColor: '#f5f5f5', border: '1px solid #d9d9d9', borderRadius: '2px' }}></div>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>Belum dijawab</Text>
-                            </div>
-                        </Space>
-
-                        <Divider />
-
-                        <Button
-                            type="primary"
-                            danger
-                            block
-                            onClick={confirmSubmit}
-                            loading={isSubmitting}
-                        >
-                            Selesaikan Tryout
-                        </Button>
-                    </Card>
-
-                    {/* Quick Stats */}
-                    <Card title="Statistik" size="small" style={{ marginTop: '16px' }}>
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text type="secondary">Terjawab:</Text>
-                                <Text strong>{answeredCount}/{questions.length}</Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text type="secondary">Waktu tersisa:</Text>
-                                <Text strong>{formatTime(timeLeft)}</Text>
-                            </div>
-                        </Space>
-                    </Card>
-                </Col>
-            </Row>
+                                ]}
+                            >
+                                <List.Item.Meta
+                                    avatar={<Avatar icon={<TrophyOutlined />} />}
+                                    title={attempt.title}
+                                    description={
+                                        <Space direction="vertical">
+                                            <div>
+                                                <Text strong>Skor: {attempt.score}/{attempt.maxScore}</Text>
+                                                <Text type="secondary" style={{ marginLeft: '16px' }}>
+                                                    Peringkat: #{attempt.rank}
+                                                </Text>
+                                            </div>
+                                            <div>
+                                                <Text type="secondary">
+                                                    Durasi: {attempt.duration} • {attempt.date}
+                                                </Text>
+                                            </div>
+                                            <Progress
+                                                percent={(attempt.score / attempt.maxScore) * 100}
+                                                size="small"
+                                                status={attempt.score >= 75 ? 'success' : 'normal'}
+                                            />
+                                        </Space>
+                                    }
+                                />
+                            </List.Item>
+                        )}
+                    />
+                </TabPane>
+            </Tabs>
         </div>
     );
 }

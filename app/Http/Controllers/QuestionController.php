@@ -10,11 +10,11 @@ class QuestionController extends Controller
     /**
      * Get questions for a specific test
      */
-    public function getQuestions(Request $request, $testId = 1)
+    public function getQuestions(Request $request, $id)
     {
         try {
             $questions = DB::table('questions')
-                ->where('test_id', $testId)
+                ->where('test_id', $id)
                 ->select('id', 'question_text as question', 'options', 'correct_answer', 'category')
                 ->get();
 

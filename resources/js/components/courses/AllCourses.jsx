@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Input, Select, Button, Tag, Avatar, Rate, Typography, Space, Pagination } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Input, Select, Button, Tag, Typography, Space, Pagination, Spin, Alert } from 'antd';
 import { SearchOutlined, BookOutlined, PlayCircleOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -8,180 +9,229 @@ const { Option } = Select;
 export default function AllCourses() {
     const [searchText, setSearchText] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
-
-    const courses = [
-        {
-            id: 1,
-            title: 'Persiapan TNI - Akademi Militer',
-            description: 'Program lengkap untuk persiapan masuk TNI Akademi Militer dengan materi terlengkap.',
-            instructor: 'Mayor Budi Santoso',
-            rating: 4.8,
-            students: 1250,
-            duration: '6 bulan',
-            level: 'Menengah',
-            price: 'Rp 750.000',
-            image: '/course-tni.jpg',
-            category: 'TNI',
-            modules: 24,
-            tests: 12
-        },
-        {
-            id: 2,
-            title: 'Persiapan POLRI - Akademi Kepolisian',
-            description: 'Kursus komprehensif untuk persiapan masuk POLRI dengan simulasi tes terlengkap.',
-            instructor: 'Komisaris Andi Wijaya',
-            rating: 4.9,
-            students: 980,
-            duration: '5 bulan',
-            level: 'Menengah',
-            price: 'Rp 650.000',
-            image: '/course-polri.jpg',
-            category: 'POLRI',
-            modules: 20,
-            tests: 10
-        },
-        {
-            id: 3,
-            title: 'CPNS 2024 - Seleksi Kompetensi Dasar',
-            description: 'Persiapan lengkap untuk tes CPNS dengan fokus pada SKD dan materi terkini.',
-            instructor: 'Dr. Sari Melati',
-            rating: 4.7,
-            students: 2100,
-            duration: '4 bulan',
-            level: 'Pemula',
-            price: 'Rp 500.000',
-            image: '/course-cpns.jpg',
-            category: 'CPNS',
-            modules: 18,
-            tests: 15
-        },
-        {
-            id: 4,
-            title: 'BUMN - Tes Potensi Akademik',
-            description: 'Program khusus untuk persiapan tes masuk BUMN dengan materi TPA terlengkap.',
-            instructor: 'Prof. Joko Susilo',
-            rating: 4.6,
-            students: 750,
-            duration: '3 bulan',
-            level: 'Menengah',
-            price: 'Rp 450.000',
-            image: '/course-bumn.jpg',
-            category: 'BUMN',
-            modules: 15,
-            tests: 8
-        }
-    ];
-
-    const categories = [
-        { value: 'all', label: 'Semua Kategori' },
-        { value: 'TNI', label: 'TNI' },
-        { value: 'POLRI', label: 'POLRI' },
-        { value: 'CPNS', label: 'CPNS' },
-        { value: 'BUMN', label: 'BUMN' }
-    ];
-
-    const filteredCourses = courses.filter(course => {
-        const matchesSearch = course.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                            course.description.toLowerCase().includes(searchText.toLowerCase());
-        const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory;
-        return matchesSearch && matchesCategory;
+    const [courses, setCourses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 12,
+        total: 0
     });
 
-    return (
-        <div>
-            <Title level={2}>Semua Kursus</Title>
-            <Paragraph type="secondary">
-                Temukan kursus terbaik untuk persiapan seleksi TNI, POLRI, CPNS, dan BUMN
-            </Paragraph>
+    // Fetch courses from API
+    useEffect(() => {
+        fetchCourses();
+    }, [selectedCategory, searchText, pagination.current]);
 
-            {/* Search and Filter */}
-            <Card style={{ marginBottom: '24px' }}>
+    const fetchCourses = async () => {
+        try {
+            setLoading(true);
+            const params = {
+                page: pagination.current,
+                per_page: pagination.pageSize,
+                category: selectedCategory,
+                search: searchText
+            };
+
+            const response = await api.get('/courses', { params });
+
+            if (response.data.success) {
+                setCourses(response.data.data.data);
+                setPagination(prev => ({
+                    ...prev,
+                    total: response.data.data.total
+                }));
+            } else {
+                setError('Failed to load courses');
+            }
+        } catch (err) {
+            console.error('Error fetching courses:', err);
+            setError('Failed to connect to server');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEnroll = async (courseId) => {
+        try {
+            const response = await api.post(`/courses/${courseId}/enroll`);
+
+            if (response.data.success) {
+                // Refresh courses to update enrollment status
+                fetchCourses();
+                // You might want to show a success message here
+            }
+        } catch (err) {
+            console.error('Error enrolling in course:', err);
+            // You might want to show an error message here
+        }
+    };
+
+    const handleSearch = (value) => {
+        setSearchText(value);
+        setPagination(prev => ({ ...prev, current: 1 }));
+    };
+
+    const handleCategoryChange = (value) => {
+        setSelectedCategory(value);
+        setPagination(prev => ({ ...prev, current: 1 }));
+    };
+
+    const handlePageChange = (page) => {
+        setPagination(prev => ({ ...prev, current: page }));
+    };
+
+    const getDifficultyColor = (level) => {
+        switch (level?.toLowerCase()) {
+            case 'beginner': return 'green';
+            case 'intermediate': return 'orange';
+            case 'advanced': return 'red';
+            default: return 'blue';
+        }
+    };
+
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: 16 }}>Loading courses...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <Alert
+                message="Error"
+                description={error}
+                type="error"
+                showIcon
+                style={{ margin: '20px 0' }}
+            />
+        );
+    }
+
+    return (
+        <div style={{ padding: '24px' }}>
+            <Title level={2}>All Courses</Title>
+            <Text type="secondary">
+                Discover and enroll in TNI/POLRI preparation courses
+            </Text>
+
+            {/* Search and Filter Section */}
+            <div style={{ margin: '24px 0', background: '#f5f5f5', padding: '16px', borderRadius: '8px' }}>
                 <Row gutter={[16, 16]} align="middle">
-                    <Col xs={24} md={12}>
+                    <Col xs={24} sm={12} md={8}>
                         <Input
-                            placeholder="Cari kursus..."
+                            placeholder="Search courses..."
                             prefix={<SearchOutlined />}
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
-                            size="large"
+                            onPressEnter={(e) => handleSearch(e.target.value)}
+                            allowClear
                         />
                     </Col>
-                    <Col xs={24} md={8}>
+                    <Col xs={24} sm={12} md={8}>
                         <Select
-                            value={selectedCategory}
-                            onChange={setSelectedCategory}
+                            placeholder="Category"
                             style={{ width: '100%' }}
-                            size="large"
+                            value={selectedCategory}
+                            onChange={handleCategoryChange}
                         >
-                            {categories.map(cat => (
-                                <Option key={cat.value} value={cat.value}>
-                                    {cat.label}
-                                </Option>
-                            ))}
+                            <Option value="all">All Categories</Option>
+                            <Option value="TNI">TNI</Option>
+                            <Option value="POLRI">POLRI</Option>
+                            <Option value="CPNS">CPNS</Option>
                         </Select>
                     </Col>
-                    <Col xs={24} md={4}>
-                        <Button type="primary" size="large" block>
-                            Filter
+                    <Col xs={24} sm={24} md={8}>
+                        <Button
+                            type="primary"
+                            icon={<SearchOutlined />}
+                            onClick={() => handleSearch(searchText)}
+                            style={{ width: '100%' }}
+                        >
+                            Search
                         </Button>
                     </Col>
                 </Row>
-            </Card>
+            </div>
 
             {/* Courses Grid */}
-            <Row gutter={[16, 16]}>
-                {filteredCourses.map(course => (
-                    <Col xs={24} md={12} lg={8} key={course.id}>
+            <Row gutter={[24, 24]}>
+                {courses.map((course) => (
+                    <Col xs={24} sm={12} lg={8} xl={6} key={course.id}>
                         <Card
                             hoverable
                             cover={
                                 <div style={{
-                                    height: '200px',
-                                    background: 'linear-gradient(45deg, #1890ff, #722ed1)',
+                                    height: 200,
+                                    background: `linear-gradient(135deg, ${course.metadata?.color || '#1890ff'}, ${course.metadata?.color || '#40a9ff'})`,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center'
+                                    justifyContent: 'center',
+                                    color: 'white',
+                                    fontSize: '24px'
                                 }}>
-                                    <BookOutlined style={{ fontSize: '48px', color: 'white' }} />
+                                    <BookOutlined />
                                 </div>
                             }
                             actions={[
-                                <Button type="primary" block>
-                                    Lihat Detail
+                                <Button
+                                    type="primary"
+                                    icon={<PlayCircleOutlined />}
+                                    onClick={() => handleEnroll(course.id)}
+                                    size="small"
+                                >
+                                    Enroll
                                 </Button>
                             ]}
                         >
                             <Card.Meta
-                                title={course.title}
+                                title={
+                                    <div>
+                                        <Text strong style={{ fontSize: '16px' }}>
+                                            {course.title}
+                                        </Text>
+                                        <div style={{ marginTop: '8px' }}>
+                                            <Tag color={getDifficultyColor(course.difficulty)}>
+                                                {course.difficulty || 'Beginner'}
+                                            </Tag>
+                                            <Tag color="blue">{course.category}</Tag>
+                                        </div>
+                                    </div>
+                                }
                                 description={
                                     <div>
-                                        <Paragraph ellipsis={{ rows: 2 }}>
+                                        <Paragraph
+                                            ellipsis={{ rows: 2 }}
+                                            style={{ marginBottom: '12px', color: '#666' }}
+                                        >
                                             {course.description}
                                         </Paragraph>
-                                        <Space direction="vertical" style={{ width: '100%' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <Avatar size="small" icon={<UserOutlined />} />
-                                                <Text style={{ marginLeft: '8px' }}>{course.instructor}</Text>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Rate disabled defaultValue={course.rating} />
-                                                <Text type="secondary">({course.students} siswa)</Text>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Tag color="blue">{course.level}</Tag>
-                                                <Text strong style={{ color: '#1890ff' }}>{course.price}</Text>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Space>
-                                                    <BookOutlined />
-                                                    <Text type="secondary">{course.modules} modul</Text>
-                                                </Space>
-                                                <Space>
-                                                    <ClockCircleOutlined />
-                                                    <Text type="secondary">{course.duration}</Text>
-                                                </Space>
-                                            </div>
+
+                                        <Space size="middle">
+                                            <Space size="small">
+                                                <BookOutlined style={{ color: '#666' }} />
+                                                <Text type="secondary">{course.modules_count} modules</Text>
+                                            </Space>
+                                            <Space size="small">
+                                                <ClockCircleOutlined style={{ color: '#666' }} />
+                                                <Text type="secondary">{course.tests_count} tests</Text>
+                                            </Space>
+                                            <Space size="small">
+                                                <UserOutlined style={{ color: '#666' }} />
+                                                <Text type="secondary">{course.students_count} students</Text>
+                                            </Space>
                                         </Space>
+
+                                        {course.price > 0 && (
+                                            <div style={{ marginTop: '12px' }}>
+                                                <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>
+                                                    Rp {course.price.toLocaleString('id-ID')}
+                                                </Text>
+                                            </div>
+                                        )}
                                     </div>
                                 }
                             />
@@ -190,16 +240,35 @@ export default function AllCourses() {
                 ))}
             </Row>
 
+            {/* No courses found */}
+            {courses.length === 0 && !loading && (
+                <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <BookOutlined style={{ fontSize: '64px', color: '#ccc' }} />
+                    <Title level={4} style={{ color: '#999', marginTop: '16px' }}>
+                        No courses found
+                    </Title>
+                    <Text type="secondary">
+                        Try adjusting your search criteria or check back later for new courses.
+                    </Text>
+                </div>
+            )}
+
             {/* Pagination */}
-            <div style={{ textAlign: 'center', marginTop: '32px' }}>
-                <Pagination
-                    defaultCurrent={1}
-                    total={filteredCourses.length}
-                    pageSize={6}
-                    showSizeChanger={false}
-                    showQuickJumper
-                />
-            </div>
+            {pagination.total > pagination.pageSize && (
+                <div style={{ textAlign: 'center', marginTop: '32px' }}>
+                    <Pagination
+                        current={pagination.current}
+                        total={pagination.total}
+                        pageSize={pagination.pageSize}
+                        onChange={handlePageChange}
+                        showSizeChanger={false}
+                        showQuickJumper
+                        showTotal={(total, range) =>
+                            `${range[0]}-${range[1]} of ${total} courses`
+                        }
+                    />
+                </div>
+            )}
         </div>
     );
 }
