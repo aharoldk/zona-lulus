@@ -37,7 +37,7 @@ import {
 // Import all screen components
 import AllCourses from './courses/AllCourses';
 import MyCourses from './courses/MyCourses';
-import TryoutTNI from './tryout/TryoutTNI';
+import Tryout from './tryout/Tryout';
 import QuestionBank from './practice/QuestionBank';
 import Achievements from './achievements/Achievements';
 import StudySchedule from './schedule/StudySchedule';
@@ -437,7 +437,7 @@ export default function Dashboard() {
 
             // Tryout sections
             case '3-1':
-                return <TryoutTNI />;
+                return <Tryout />;
             case '3-2':
             case '3-3':
             case '3-4':
