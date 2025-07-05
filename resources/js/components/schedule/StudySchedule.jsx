@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Typography, Calendar, List, Button, Tag, Space, Badge, Timeline, Modal, Form, Input, TimePicker, Select } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Typography, Calendar, List, Button, Tag, Space, Badge, Timeline, Modal, Form, Input, TimePicker, Select, Spin, Alert, message } from 'antd';
 import { ClockCircleOutlined, BellOutlined, VideoCameraOutlined, CalendarOutlined, PlusOutlined } from '@ant-design/icons';
 import moment from 'moment';
+import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -10,80 +11,86 @@ export default function StudySchedule() {
     const [selectedDate, setSelectedDate] = useState(moment());
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [form] = Form.useForm();
+    const [scheduleData, setScheduleData] = useState([]);
+    const [upcomingExams, setUpcomingExams] = useState([]);
+    const [todaySchedule, setTodaySchedule] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const scheduleData = [
-        {
-            id: 1,
-            title: 'Latihan Matematika',
-            type: 'study',
-            date: moment(),
-            time: '09:00',
-            duration: 60,
-            status: 'upcoming',
-            reminder: true
-        },
-        {
-            id: 2,
-            title: 'Live Session - Bahasa Indonesia',
-            type: 'live',
-            date: moment().add(1, 'day'),
-            time: '14:00',
-            duration: 90,
-            status: 'upcoming',
-            reminder: true
-        },
-        {
-            id: 3,
-            title: 'Tryout TNI - Paket Lengkap',
-            type: 'test',
-            date: moment().add(2, 'days'),
-            time: '10:00',
-            duration: 120,
-            status: 'upcoming',
-            reminder: false
-        },
-        {
-            id: 4,
-            title: 'Review Materi CPNS',
-            type: 'study',
-            date: moment().subtract(1, 'day'),
-            time: '16:00',
-            duration: 45,
-            status: 'completed',
-            reminder: false
+    useEffect(() => {
+        fetchScheduleData();
+        fetchUpcomingExams();
+        fetchTodaySchedule();
+    }, [selectedDate]);
+
+    const fetchScheduleData = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/schedule', {
+                params: {
+                    date: selectedDate.format('YYYY-MM-DD')
+                }
+            });
+
+            if (response.data.success) {
+                setScheduleData(response.data.data);
+            } else {
+                setError('Failed to load schedule data');
+            }
+        } catch (err) {
+            console.error('Error fetching schedule:', err);
+            setError('Failed to connect to server');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
 
-    const upcomingExams = [
-        {
-            id: 1,
-            title: 'Tes Masuk TNI Akademi Militer',
-            date: '15 Agustus 2024',
-            location: 'Jakarta',
-            registrationDeadline: '30 Juli 2024',
-            status: 'open'
-        },
-        {
-            id: 2,
-            title: 'Tes CPNS Kementerian Pendidikan',
-            date: '20 September 2024',
-            location: 'Online',
-            registrationDeadline: '15 Agustus 2024',
-            status: 'open'
-        },
-        {
-            id: 3,
-            title: 'Tes Masuk POLRI',
-            date: '10 Oktober 2024',
-            location: 'Surabaya',
-            registrationDeadline: '25 September 2024',
-            status: 'soon'
+    const fetchUpcomingExams = async () => {
+        try {
+            const response = await api.get('/schedule/upcoming-exams');
+            if (response.data.success) {
+                setUpcomingExams(response.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching upcoming exams:', err);
         }
-    ];
+    };
 
-    const todaySchedule = scheduleData.filter(item =>
-        item.date.format('YYYY-MM-DD') === moment().format('YYYY-MM-DD')
-    );
+    const fetchTodaySchedule = async () => {
+        try {
+            const response = await api.get('/schedule/today');
+            if (response.data.success) {
+                setTodaySchedule(response.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching today schedule:', err);
+        }
+    };
+
+    const handleAddSchedule = async (values) => {
+        try {
+            const scheduleData = {
+                ...values,
+                date: selectedDate.format('YYYY-MM-DD'),
+                time: values.time.format('HH:mm')
+            };
+
+            const response = await api.post('/schedule', scheduleData);
+
+            if (response.data.success) {
+                message.success('Jadwal berhasil ditambahkan!');
+                setIsModalVisible(false);
+                form.resetFields();
+                fetchScheduleData();
+                fetchTodaySchedule();
+            } else {
+                message.error('Gagal menambahkan jadwal');
+            }
+        } catch (err) {
+            console.error('Error adding schedule:', err);
+            message.error('Gagal menambahkan jadwal');
+        }
+    };
 
     const getTypeColor = (type) => {
         switch (type) {
@@ -103,73 +110,76 @@ export default function StudySchedule() {
         }
     };
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'open': return 'green';
-            case 'soon': return 'orange';
-            case 'closed': return 'red';
-            default: return 'default';
-        }
-    };
-
-    const handleAddSchedule = () => {
-        setIsModalVisible(true);
-    };
-
-    const handleModalOk = () => {
-        form.validateFields().then(values => {
-            console.log('New schedule:', values);
-            setIsModalVisible(false);
-            form.resetFields();
-        });
-    };
-
-    const handleModalCancel = () => {
-        setIsModalVisible(false);
-        form.resetFields();
-    };
-
-    const dateCellRender = (value) => {
-        const daySchedule = scheduleData.filter(item =>
-            item.date.format('YYYY-MM-DD') === value.format('YYYY-MM-DD')
-        );
-
+    if (loading) {
         return (
-            <div>
-                {daySchedule.map(item => (
-                    <Badge
-                        key={item.id}
-                        status={item.status === 'completed' ? 'success' : 'processing'}
-                        text={
-                            <Text style={{ fontSize: '10px' }}>
-                                {item.time} {item.title.substring(0, 10)}...
-                            </Text>
-                        }
-                    />
-                ))}
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Loading schedule...</div>
             </div>
         );
-    };
+    }
+
+    if (error) {
+        return (
+            <Alert
+                message="Error"
+                description={error}
+                type="error"
+                showIcon
+                style={{ margin: '20px 0' }}
+            />
+        );
+    }
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                    <Title level={2}>Jadwal Belajar</Title>
-                    <Paragraph type="secondary">
-                        Kelola jadwal belajar dan pantau kalender ujian
-                    </Paragraph>
-                </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAddSchedule}>
-                    Tambah Jadwal
-                </Button>
-            </div>
+            <Title level={2}>Jadwal Belajar</Title>
+            <Paragraph type="secondary">
+                Kelola jadwal belajar dan pantau ujian yang akan datang
+            </Paragraph>
 
             <Row gutter={[16, 16]}>
-                {/* Today's Schedule */}
+                {/* Calendar Section */}
+                <Col xs={24} lg={16}>
+                    <Card title="Kalender Jadwal" extra={
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
+                            Tambah Jadwal
+                        </Button>
+                    }>
+                        <Calendar
+                            value={selectedDate}
+                            onSelect={setSelectedDate}
+                            dateCellRender={(date) => {
+                                const daySchedule = scheduleData.filter(item =>
+                                    moment(item.date).format('YYYY-MM-DD') === date.format('YYYY-MM-DD')
+                                );
+                                return (
+                                    <div>
+                                        {daySchedule.slice(0, 2).map(item => (
+                                            <div key={item.id} style={{ fontSize: '10px', marginBottom: '2px' }}>
+                                                <Badge status={item.status === 'completed' ? 'success' : 'processing'} />
+                                                <span>{item.title.substring(0, 15)}...</span>
+                                            </div>
+                                        ))}
+                                        {daySchedule.length > 2 && (
+                                            <div style={{ fontSize: '10px', color: '#999' }}>
+                                                +{daySchedule.length - 2} lainnya
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }}
+                        />
+                    </Card>
+                </Col>
+
+                {/* Sidebar */}
                 <Col xs={24} lg={8}>
-                    <Card title="Jadwal Hari Ini" extra={<Text type="secondary">{moment().format('DD MMMM YYYY')}</Text>}>
-                        {todaySchedule.length > 0 ? (
+                    {/* Today's Schedule */}
+                    <Card title="Jadwal Hari Ini" style={{ marginBottom: '16px' }}>
+                        {todaySchedule.length === 0 ? (
+                            <Text type="secondary">Tidak ada jadwal hari ini</Text>
+                        ) : (
                             <Timeline>
                                 {todaySchedule.map(item => (
                                     <Timeline.Item
@@ -178,47 +188,39 @@ export default function StudySchedule() {
                                         color={getTypeColor(item.type)}
                                     >
                                         <div>
-                                            <Text strong>{item.time}</Text>
+                                            <Text strong>{item.title}</Text>
                                             <br />
-                                            <Text>{item.title}</Text>
+                                            <Text type="secondary">
+                                                {item.time} ({item.duration} menit)
+                                            </Text>
                                             <br />
-                                            <Space>
-                                                <Tag color={getTypeColor(item.type)}>
-                                                    {item.duration} menit
-                                                </Tag>
-                                                {item.reminder && <BellOutlined style={{ color: '#faad14' }} />}
-                                            </Space>
+                                            <Tag color={getTypeColor(item.type)}>{item.type}</Tag>
+                                            {item.status === 'completed' && (
+                                                <Tag color="success">Selesai</Tag>
+                                            )}
                                         </div>
                                     </Timeline.Item>
                                 ))}
                             </Timeline>
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '24px' }}>
-                                <Text type="secondary">Tidak ada jadwal hari ini</Text>
-                            </div>
                         )}
                     </Card>
 
                     {/* Upcoming Exams */}
-                    <Card title="Kalender Ujian" style={{ marginTop: '16px' }}>
+                    <Card title="Ujian Mendatang">
                         <List
                             dataSource={upcomingExams}
-                            renderItem={(exam) => (
+                            renderItem={exam => (
                                 <List.Item>
                                     <List.Item.Meta
-                                        title={
-                                            <div>
-                                                <Text strong>{exam.title}</Text>
-                                                <Tag color={getStatusColor(exam.status)} style={{ marginLeft: '8px' }}>
-                                                    {exam.status === 'open' ? 'Pendaftaran Buka' : 'Segera Dibuka'}
-                                                </Tag>
-                                            </div>
-                                        }
+                                        title={exam.title}
                                         description={
                                             <Space direction="vertical" size="small">
-                                                <Text type="secondary">📅 {exam.date}</Text>
-                                                <Text type="secondary">📍 {exam.location}</Text>
-                                                <Text type="secondary">⏰ Batas daftar: {exam.registrationDeadline}</Text>
+                                                <Text>📅 {exam.date}</Text>
+                                                <Text>📍 {exam.location}</Text>
+                                                <Text>⏰ Daftar sampai: {exam.registrationDeadline}</Text>
+                                                <Tag color={exam.status === 'open' ? 'green' : 'orange'}>
+                                                    {exam.status === 'open' ? 'Pendaftaran Dibuka' : 'Segera Dibuka'}
+                                                </Tag>
                                             </Space>
                                         }
                                     />
@@ -227,79 +229,110 @@ export default function StudySchedule() {
                         />
                     </Card>
                 </Col>
-
-                {/* Calendar */}
-                <Col xs={24} lg={16}>
-                    <Card title="Kalender Jadwal">
-                        <Calendar
-                            value={selectedDate}
-                            onSelect={setSelectedDate}
-                            dateCellRender={dateCellRender}
-                        />
-                    </Card>
-                </Col>
             </Row>
+
+            {/* Selected Date Schedule */}
+            <Card title={`Jadwal ${selectedDate.format('DD MMMM YYYY')}`} style={{ marginTop: '24px' }}>
+                {scheduleData.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px' }}>
+                        <Text type="secondary">Tidak ada jadwal pada tanggal ini</Text>
+                    </div>
+                ) : (
+                    <List
+                        grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 3, xl: 4, xxl: 4 }}
+                        dataSource={scheduleData}
+                        renderItem={item => (
+                            <List.Item>
+                                <Card
+                                    size="small"
+                                    title={
+                                        <Space>
+                                            {getTypeIcon(item.type)}
+                                            <span>{item.title}</span>
+                                        </Space>
+                                    }
+                                    extra={<Tag color={getTypeColor(item.type)}>{item.type}</Tag>}
+                                >
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <div>
+                                            <ClockCircleOutlined /> {item.time}
+                                        </div>
+                                        <div>
+                                            <Text type="secondary">{item.duration} menit</Text>
+                                        </div>
+                                        {item.status === 'completed' && (
+                                            <Tag color="success">Selesai</Tag>
+                                        )}
+                                        {item.reminder && (
+                                            <Tag color="orange">
+                                                <BellOutlined /> Reminder
+                                            </Tag>
+                                        )}
+                                    </Space>
+                                </Card>
+                            </List.Item>
+                        )}
+                    />
+                )}
+            </Card>
 
             {/* Add Schedule Modal */}
             <Modal
                 title="Tambah Jadwal Belajar"
                 visible={isModalVisible}
-                onOk={handleModalOk}
-                onCancel={handleModalCancel}
-                okText="Simpan"
-                cancelText="Batal"
+                onCancel={() => setIsModalVisible(false)}
+                footer={null}
             >
-                <Form form={form} layout="vertical">
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleAddSchedule}
+                >
                     <Form.Item
                         name="title"
                         label="Judul"
-                        rules={[{ required: true, message: 'Judul wajib diisi!' }]}
+                        rules={[{ required: true, message: 'Judul harus diisi!' }]}
                     >
                         <Input placeholder="Masukkan judul jadwal" />
                     </Form.Item>
 
                     <Form.Item
                         name="type"
-                        label="Jenis"
-                        rules={[{ required: true, message: 'Jenis wajib dipilih!' }]}
+                        label="Tipe"
+                        rules={[{ required: true, message: 'Tipe harus dipilih!' }]}
                     >
-                        <Select placeholder="Pilih jenis aktivitas">
+                        <Select placeholder="Pilih tipe jadwal">
                             <Option value="study">Belajar</Option>
                             <Option value="live">Live Session</Option>
-                            <Option value="test">Tes/Tryout</Option>
+                            <Option value="test">Tes/Ujian</Option>
                         </Select>
                     </Form.Item>
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="time"
-                                label="Waktu"
-                                rules={[{ required: true, message: 'Waktu wajib dipilih!' }]}
-                            >
-                                <TimePicker
-                                    style={{ width: '100%' }}
-                                    format="HH:mm"
-                                    placeholder="Pilih waktu"
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="duration"
-                                label="Durasi (menit)"
-                                rules={[{ required: true, message: 'Durasi wajib diisi!' }]}
-                            >
-                                <Input type="number" placeholder="60" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Form.Item
+                        name="time"
+                        label="Waktu"
+                        rules={[{ required: true, message: 'Waktu harus diisi!' }]}
+                    >
+                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                    </Form.Item>
 
                     <Form.Item
-                        name="reminder"
-                        valuePropName="checked"
+                        name="duration"
+                        label="Durasi (menit)"
+                        rules={[{ required: true, message: 'Durasi harus diisi!' }]}
                     >
-                        <input type="checkbox" /> Aktifkan pengingat
+                        <Input type="number" placeholder="60" />
+                    </Form.Item>
+
+                    <Form.Item>
+                        <Space>
+                            <Button type="primary" htmlType="submit">
+                                Simpan
+                            </Button>
+                            <Button onClick={() => setIsModalVisible(false)}>
+                                Batal
+                            </Button>
+                        </Space>
                     </Form.Item>
                 </Form>
             </Modal>

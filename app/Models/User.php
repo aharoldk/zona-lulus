@@ -23,6 +23,18 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
+        'birth_date',
+        'address',
+        'education',
+        'target',
+        'avatar',
+        'two_factor_enabled',
+        'login_alerts',
+        'email_course_updates',
+        'email_study_reminders',
+        'email_tryout_results',
+        'push_deadline_reminders',
+        'push_achievements',
     ];
 
     /**
@@ -45,6 +57,25 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'birth_date' => 'date',
+            'two_factor_enabled' => 'boolean',
+            'login_alerts' => 'boolean',
+            'email_course_updates' => 'boolean',
+            'email_study_reminders' => 'boolean',
+            'email_tryout_results' => 'boolean',
+            'push_deadline_reminders' => 'boolean',
+            'push_achievements' => 'boolean',
         ];
+    }
+
+    // Relationships
+    public function testAttempts()
+    {
+        return $this->hasMany(TestAttempt::class);
+    }
+
+    public function courseProgress()
+    {
+        return $this->hasMany(CourseProgress::class);
     }
 }

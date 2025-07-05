@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Button, Tag, Typography, Space, Select, Input, Statistic, Progress, List } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Button, Tag, Typography, Space, Select, Input, Statistic, Progress, List, Spin, Alert } from 'antd';
 import { PlayCircleOutlined, SearchOutlined, FilterOutlined, BookOutlined, ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -9,63 +10,60 @@ export default function QuestionBank() {
     const [selectedSubject, setSelectedSubject] = useState('all');
     const [selectedDifficulty, setSelectedDifficulty] = useState('all');
     const [searchText, setSearchText] = useState('');
-
-    const questionSets = [
-        {
-            id: 1,
-            title: 'Matematika Dasar - Aritmatika',
-            subject: 'Matematika',
-            difficulty: 'Mudah',
-            questions: 50,
-            completed: 35,
-            timeEstimate: 60,
-            category: 'TNI',
-            description: 'Latihan soal aritmatika dasar untuk persiapan tes TNI'
-        },
-        {
-            id: 2,
-            title: 'Bahasa Indonesia - Tata Bahasa',
-            subject: 'Bahasa Indonesia',
-            difficulty: 'Menengah',
-            questions: 40,
-            completed: 20,
-            timeEstimate: 45,
-            category: 'CPNS',
-            description: 'Soal-soal tata bahasa Indonesia untuk CPNS'
-        },
-        {
-            id: 3,
-            title: 'Logika - Penalaran Analitis',
-            subject: 'Logika',
-            difficulty: 'Sulit',
-            questions: 30,
-            completed: 0,
-            timeEstimate: 90,
-            category: 'POLRI',
-            description: 'Latihan penalaran analitis untuk tes POLRI'
-        },
-        {
-            id: 4,
-            title: 'Pengetahuan Umum - Sejarah Indonesia',
-            subject: 'Pengetahuan Umum',
-            difficulty: 'Menengah',
-            questions: 60,
-            completed: 45,
-            timeEstimate: 75,
-            category: 'TNI',
-            description: 'Soal sejarah Indonesia untuk persiapan TNI'
-        }
-    ];
+    const [questionSets, setQuestionSets] = useState([]);
+    const [stats, setStats] = useState({
+        totalSets: 0,
+        completedSets: 0,
+        totalQuestions: 0,
+        answeredQuestions: 0
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const subjects = ['all', 'Matematika', 'Bahasa Indonesia', 'Logika', 'Pengetahuan Umum'];
     const difficulties = ['all', 'Mudah', 'Menengah', 'Sulit'];
 
-    const filteredQuestions = questionSets.filter(set => {
-        const matchesSubject = selectedSubject === 'all' || set.subject === selectedSubject;
-        const matchesDifficulty = selectedDifficulty === 'all' || set.difficulty === selectedDifficulty;
-        const matchesSearch = set.title.toLowerCase().includes(searchText.toLowerCase());
-        return matchesSubject && matchesDifficulty && matchesSearch;
-    });
+    useEffect(() => {
+        fetchQuestionSets();
+        fetchStats();
+    }, [selectedSubject, selectedDifficulty, searchText]);
+
+    const fetchQuestionSets = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/question-bank', {
+                params: {
+                    subject: selectedSubject,
+                    difficulty: selectedDifficulty,
+                    search: searchText
+                }
+            });
+
+            if (response.data.success) {
+                setQuestionSets(response.data.data);
+            } else {
+                setError('Failed to load question sets');
+            }
+        } catch (err) {
+            console.error('Error fetching question sets:', err);
+            setError('Failed to connect to server');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const response = await api.get('/question-bank/stats');
+            if (response.data.success) {
+                setStats(response.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching stats:', err);
+        }
+    };
+
+    const filteredQuestions = questionSets;
 
     const getDifficultyColor = (difficulty) => {
         switch (difficulty) {
@@ -83,6 +81,27 @@ export default function QuestionBank() {
         return 'normal';
     };
 
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Loading question bank...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <Alert
+                message="Error"
+                description={error}
+                type="error"
+                showIcon
+                style={{ margin: '20px 0' }}
+            />
+        );
+    }
+
     return (
         <div>
             <Title level={2}>Bank Soal</Title>
@@ -96,7 +115,7 @@ export default function QuestionBank() {
                     <Card>
                         <Statistic
                             title="Total Set Soal"
-                            value={questionSets.length}
+                            value={stats.totalSets}
                             prefix={<BookOutlined />}
                         />
                     </Card>
@@ -104,8 +123,8 @@ export default function QuestionBank() {
                 <Col xs={12} sm={6}>
                     <Card>
                         <Statistic
-                            title="Soal Diselesaikan"
-                            value={questionSets.reduce((sum, set) => sum + set.completed, 0)}
+                            title="Set Selesai"
+                            value={stats.completedSets}
                             prefix={<CheckCircleOutlined />}
                         />
                     </Card>
@@ -114,7 +133,7 @@ export default function QuestionBank() {
                     <Card>
                         <Statistic
                             title="Total Soal"
-                            value={questionSets.reduce((sum, set) => sum + set.questions, 0)}
+                            value={stats.totalQuestions}
                             prefix={<BookOutlined />}
                         />
                     </Card>
@@ -122,9 +141,9 @@ export default function QuestionBank() {
                 <Col xs={12} sm={6}>
                     <Card>
                         <Statistic
-                            title="Progress Keseluruhan"
-                            value={Math.round((questionSets.reduce((sum, set) => sum + set.completed, 0) / questionSets.reduce((sum, set) => sum + set.questions, 0)) * 100)}
-                            suffix="%"
+                            title="Soal Terjawab"
+                            value={stats.answeredQuestions}
+                            prefix={<CheckCircleOutlined />}
                         />
                     </Card>
                 </Col>

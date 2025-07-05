@@ -1,80 +1,57 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Typography, Space, Badge, Progress, List, Avatar, Tabs, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Typography, Space, Badge, Progress, List, Avatar, Tabs, Button, Spin, Alert } from 'antd';
 import { TrophyOutlined, StarOutlined, FireOutlined, CrownOutlined, SafetyCertificateOutlined, GiftOutlined } from '@ant-design/icons';
+import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 
 export default function Achievements() {
-    const badges = [
-        {
-            id: 1,
-            name: 'First Step',
-            description: 'Menyelesaikan kursus pertama',
-            icon: <StarOutlined />,
-            earned: true,
-            earnedDate: '15 Juni 2024',
-            color: '#52c41a',
-            rarity: 'common'
-        },
-        {
-            id: 2,
-            name: 'Streak Master',
-            description: 'Belajar selama 7 hari berturut-turut',
-            icon: <FireOutlined />,
-            earned: true,
-            earnedDate: '20 Juni 2024',
-            color: '#fa8c16',
-            rarity: 'rare'
-        },
-        {
-            id: 3,
-            name: 'Quiz Champion',
-            description: 'Mendapat skor 100% dalam 5 quiz',
-            icon: <TrophyOutlined />,
-            earned: false,
-            progress: 3,
-            target: 5,
-            color: '#1890ff',
-            rarity: 'epic'
-        },
-        {
-            id: 4,
-            name: 'Knowledge King',
-            description: 'Menyelesaikan 10 kursus',
-            icon: <CrownOutlined />,
-            earned: false,
-            progress: 3,
-            target: 10,
-            color: '#722ed1',
-            rarity: 'legendary'
-        }
-    ];
+    const [badges, setBadges] = useState([]);
+    const [leaderboard, setLeaderboard] = useState([]);
+    const [certificates, setCertificates] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const leaderboard = [
-        { rank: 1, name: 'Ahmad Yusuf', points: 2850, avatar: 'A' },
-        { rank: 2, name: 'Siti Nurhaliza', points: 2720, avatar: 'S' },
-        { rank: 3, name: 'Budi Santoso', points: 2650, avatar: 'B' },
-        { rank: 4, name: 'Rina Kartika', points: 2580, avatar: 'R' },
-        { rank: 5, name: 'Anda', points: 2450, avatar: 'A', isCurrentUser: true }
-    ];
+    useEffect(() => {
+        fetchAchievementsData();
+    }, []);
 
-    const certificates = [
-        {
-            id: 1,
-            title: 'Sertifikat Penyelesaian - Persiapan TNI',
-            issuedDate: '25 Juni 2024',
-            score: 95,
-            status: 'issued'
-        },
-        {
-            id: 2,
-            title: 'Sertifikat Penyelesaian - CPNS Dasar',
-            issuedDate: 'Dalam Progress',
-            score: 0,
-            status: 'pending'
+    const fetchAchievementsData = async () => {
+        try {
+            setLoading(true);
+            const [badgesResponse, leaderboardResponse, certificatesResponse] = await Promise.all([
+                api.get('/achievements/badges'),
+                api.get('/achievements/leaderboard'),
+                api.get('/achievements/certificates')
+            ]);
+
+            if (badgesResponse.data.success) {
+                setBadges(badgesResponse.data.data);
+            }
+            if (leaderboardResponse.data.success) {
+                setLeaderboard(leaderboardResponse.data.data);
+            }
+            if (certificatesResponse.data.success) {
+                setCertificates(certificatesResponse.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching achievements data:', err);
+            setError('Failed to load achievements data');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+    const getIconComponent = (iconName) => {
+        switch (iconName) {
+            case 'star': return <StarOutlined />;
+            case 'fire': return <FireOutlined />;
+            case 'trophy': return <TrophyOutlined />;
+            case 'crown': return <CrownOutlined />;
+            default: return <StarOutlined />;
+        }
+    };
 
     const getRarityColor = (rarity) => {
         switch (rarity) {
@@ -95,63 +72,75 @@ export default function Achievements() {
         }
     };
 
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Loading achievements...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <Alert
+                message="Error"
+                description={error}
+                type="error"
+                showIcon
+                style={{ margin: '20px 0' }}
+            />
+        );
+    }
+
     return (
         <div>
             <Title level={2}>Prestasi</Title>
             <Paragraph type="secondary">
-                Lihat pencapaian, peringkat, dan sertifikat Anda
+                Pantau pencapaian dan prestasi belajar Anda
             </Paragraph>
 
             <Tabs defaultActiveKey="badges">
-                <TabPane tab="Badge & Pencapaian" key="badges">
+                <TabPane tab="Lencana" key="badges">
                     <Row gutter={[16, 16]}>
                         {badges.map(badge => (
-                            <Col xs={24} sm={12} md={8} lg={6} key={badge.id}>
+                            <Col xs={24} md={12} lg={8} key={badge.id}>
                                 <Card
                                     style={{
-                                        textAlign: 'center',
                                         opacity: badge.earned ? 1 : 0.6,
-                                        border: badge.earned ? `2px solid ${badge.color}` : '1px solid #f0f0f0'
+                                        border: badge.earned ? `2px solid ${getRarityColor(badge.rarity)}` : '1px solid #d9d9d9'
                                     }}
                                 >
-                                    <Space direction="vertical" style={{ width: '100%' }}>
-                                        <div style={{
-                                            fontSize: '48px',
-                                            color: badge.earned ? badge.color : '#d9d9d9',
-                                            marginBottom: '8px'
-                                        }}>
-                                            {badge.icon}
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div
+                                            style={{
+                                                fontSize: '48px',
+                                                color: badge.earned ? badge.color : '#d9d9d9',
+                                                marginBottom: '16px'
+                                            }}
+                                        >
+                                            {getIconComponent(badge.icon)}
                                         </div>
-                                        <Title level={5} style={{ margin: 0 }}>
-                                            {badge.name}
-                                        </Title>
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            {badge.description}
-                                        </Text>
+                                        <Title level={4}>{badge.name}</Title>
+                                        <Paragraph type="secondary">{badge.description}</Paragraph>
 
                                         {badge.earned ? (
-                                            <div>
-                                                <Badge
-                                                    color={getRarityColor(badge.rarity)}
-                                                    text={badge.rarity.toUpperCase()}
-                                                />
-                                                <br />
-                                                <Text type="secondary" style={{ fontSize: '11px' }}>
-                                                    Diperoleh: {badge.earnedDate}
-                                                </Text>
-                                            </div>
+                                            <Space direction="vertical" style={{ width: '100%' }}>
+                                                <Badge.Ribbon text={badge.rarity.toUpperCase()} color={getRarityColor(badge.rarity)}>
+                                                    <div style={{ height: '20px' }}></div>
+                                                </Badge.Ribbon>
+                                                <Text type="success">Diperoleh: {badge.earnedDate}</Text>
+                                            </Space>
                                         ) : (
-                                            <div>
+                                            <Space direction="vertical" style={{ width: '100%' }}>
+                                                <Text type="secondary">Progress: {badge.progress}/{badge.target}</Text>
                                                 <Progress
                                                     percent={Math.round((badge.progress / badge.target) * 100)}
                                                     size="small"
                                                 />
-                                                <Text type="secondary" style={{ fontSize: '11px' }}>
-                                                    {badge.progress}/{badge.target}
-                                                </Text>
-                                            </div>
+                                            </Space>
                                         )}
-                                    </Space>
+                                    </div>
                                 </Card>
                             </Col>
                         ))}
@@ -159,49 +148,63 @@ export default function Achievements() {
                 </TabPane>
 
                 <TabPane tab="Leaderboard" key="leaderboard">
-                    <Card title="Peringkat Bulanan">
+                    <Card title="Peringkat Peserta">
                         <List
                             dataSource={leaderboard}
                             renderItem={(item) => (
                                 <List.Item
                                     style={{
-                                        backgroundColor: item.isCurrentUser ? '#f6ffed' : 'transparent',
-                                        padding: '16px',
+                                        background: item.isCurrentUser ? '#f6ffed' : 'transparent',
+                                        border: item.isCurrentUser ? '1px solid #b7eb8f' : 'none',
                                         borderRadius: '8px',
-                                        marginBottom: '8px'
+                                        marginBottom: '8px',
+                                        padding: '12px'
                                     }}
                                 >
                                     <List.Item.Meta
                                         avatar={
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <div style={{
-                                                    width: '32px',
-                                                    height: '32px',
-                                                    borderRadius: '50%',
-                                                    backgroundColor: getRankColor(item.rank),
-                                                    color: 'white',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    fontWeight: 'bold',
-                                                    marginRight: '12px'
-                                                }}>
-                                                    #{item.rank}
+                                            <div style={{ position: 'relative' }}>
+                                                <Avatar
+                                                    style={{
+                                                        backgroundColor: getRankColor(item.rank),
+                                                        color: '#fff'
+                                                    }}
+                                                    size="large"
+                                                >
+                                                    {item.avatar}
+                                                </Avatar>
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '-8px',
+                                                        left: '-8px',
+                                                        background: getRankColor(item.rank),
+                                                        color: '#fff',
+                                                        borderRadius: '50%',
+                                                        width: '24px',
+                                                        height: '24px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: '12px',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    {item.rank}
                                                 </div>
-                                                <Avatar>{item.avatar}</Avatar>
                                             </div>
                                         }
                                         title={
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <span style={{ fontWeight: item.isCurrentUser ? 'bold' : 'normal' }}>
-                                                    {item.name} {item.isCurrentUser && '(Anda)'}
-                                                </span>
-                                                <span style={{ color: '#1890ff', fontWeight: 'bold' }}>
-                                                    {item.points} poin
-                                                </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span>{item.name}</span>
+                                                {item.isCurrentUser && <Tag color="green">Anda</Tag>}
                                             </div>
                                         }
+                                        description={`${item.points} poin`}
                                     />
+                                    {item.rank <= 3 && (
+                                        <TrophyOutlined style={{ color: getRankColor(item.rank), fontSize: '24px' }} />
+                                    )}
                                 </List.Item>
                             )}
                         />
@@ -211,43 +214,43 @@ export default function Achievements() {
                 <TabPane tab="Sertifikat" key="certificates">
                     <Row gutter={[16, 16]}>
                         {certificates.map(cert => (
-                            <Col xs={24} md={12} key={cert.id}>
+                            <Col xs={24} md={12} lg={8} key={cert.id}>
                                 <Card
                                     title={cert.title}
                                     extra={
-                                        cert.status === 'issued' ? (
-                                            <Button type="primary" size="small">
+                                        cert.status === 'issued' ?
+                                            <Tag color="green">Terbit</Tag> :
+                                            <Tag color="orange">Pending</Tag>
+                                    }
+                                    actions={
+                                        cert.status === 'issued' ? [
+                                            <Button type="primary" icon={<SafetyCertificateOutlined />}>
                                                 Download
                                             </Button>
-                                        ) : (
-                                            <Text type="secondary">Pending</Text>
-                                        )
+                                        ] : []
                                     }
                                 >
                                     <Space direction="vertical" style={{ width: '100%' }}>
-                                        <div style={{ textAlign: 'center', padding: '24px' }}>
-                                            <SafetyCertificateOutlined style={{
-                                                fontSize: '64px',
-                                                color: cert.status === 'issued' ? '#faad14' : '#d9d9d9'
-                                            }} />
+                                        <div style={{ textAlign: 'center' }}>
+                                            <SafetyCertificateOutlined
+                                                style={{
+                                                    fontSize: '48px',
+                                                    color: cert.status === 'issued' ? '#52c41a' : '#d9d9d9'
+                                                }}
+                                            />
                                         </div>
 
-                                        {cert.status === 'issued' ? (
-                                            <>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <Text strong>Skor Akhir: {cert.score}%</Text>
-                                                </div>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <Text type="secondary">
-                                                        Diterbitkan: {cert.issuedDate}
-                                                    </Text>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div style={{ textAlign: 'center' }}>
-                                                <Text type="secondary">
-                                                    Selesaikan kursus untuk mendapatkan sertifikat
-                                                </Text>
+                                        <div>
+                                            <Text strong>Tanggal Terbit:</Text>
+                                            <br />
+                                            <Text>{cert.issuedDate}</Text>
+                                        </div>
+
+                                        {cert.status === 'issued' && (
+                                            <div>
+                                                <Text strong>Skor:</Text>
+                                                <br />
+                                                <Text>{cert.score}/100</Text>
                                             </div>
                                         )}
                                     </Space>
