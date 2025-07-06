@@ -51,6 +51,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);
     Route::put('/profile/settings', [ProfileController::class, 'updateSettings']);
+    Route::get('/profile/stats', [ProfileController::class, 'getProfileStats']);
+    Route::get('/profile/activity', [ProfileController::class, 'getActivityHistory']);
+    Route::get('/profile/achievements', [ProfileController::class, 'getAchievements']);
+    Route::delete('/profile', [ProfileController::class, 'deleteAccount']);
 
     // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index']);
