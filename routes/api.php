@@ -13,6 +13,8 @@ use App\Http\Controllers\NotificationController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/check-email', [AuthController::class, 'checkEmail']);
+Route::get('/check-phone', [AuthController::class, 'checkPhone']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
