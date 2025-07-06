@@ -31,7 +31,9 @@ import {
     PlayCircleOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
-    StarOutlined
+    StarOutlined,
+    LineChartOutlined,
+    RobotOutlined
 } from '@ant-design/icons';
 
 // Import all screen components
@@ -43,6 +45,9 @@ import Achievements from './achievements/Achievements';
 import StudySchedule from './schedule/StudySchedule';
 import Profile from './settings/Profile';
 import Notifications from './notifications/Notifications';
+import AnalyticsDashboard from './analytics/AnalyticsDashboard';
+import StudyTracker from './study/StudyTracker';
+import AIStudyAssistant from './ai/AIStudyAssistant';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -272,6 +277,21 @@ export default function Dashboard() {
                     label: 'Kalender Ujian',
                 },
             ],
+        },
+        {
+            key: '9',
+            icon: <LineChartOutlined />,
+            label: 'Analytics',
+        },
+        {
+            key: '10',
+            icon: <ClockCircleOutlined />,
+            label: 'Study Tracker',
+        },
+        {
+            key: '11',
+            icon: <RobotOutlined />,
+            label: 'AI Assistant',
         },
     ];
 
@@ -535,6 +555,14 @@ export default function Dashboard() {
             case '8-3':
             case '8-4':
                 return <StudySchedule />;
+
+            // Analytics, Study Tracker, AI Assistant sections
+            case '9':
+                return <AnalyticsDashboard />;
+            case '10':
+                return <StudyTracker />;
+            case '11':
+                return <AIStudyAssistant />;
 
             // User menu sections (accessible from user dropdown)
             case 'profile':
