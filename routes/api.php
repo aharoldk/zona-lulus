@@ -9,6 +9,7 @@ use App\Http\Controllers\QuestionBankController;
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\NotificationController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -50,4 +51,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);
     Route::put('/profile/settings', [ProfileController::class, 'updateSettings']);
+
+    // Notification routes
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
+    Route::delete('/notifications/clear-all', [NotificationController::class, 'clearAll']);
 });

@@ -58,7 +58,7 @@ A comprehensive online tryout platform for TNI/POLRI and civil service entrance 
 ### 1. Clone & Install
 ```bash
 git clone <repository-url>
-cd siap-seleksi
+cd zona-lulus
 composer install
 npm install
 ```
@@ -74,7 +74,7 @@ Configure your `.env` file:
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=siap_seleksi
+DB_DATABASE=zona_lulus
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
 ```

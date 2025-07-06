@@ -42,6 +42,7 @@ import QuestionBank from './practice/QuestionBank';
 import Achievements from './achievements/Achievements';
 import StudySchedule from './schedule/StudySchedule';
 import Profile from './settings/Profile';
+import Notifications from './notifications/Notifications';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -68,6 +69,36 @@ export default function Dashboard() {
 
     const handleLogout = () => {
         logout();
+    };
+
+    // Handle user menu clicks
+    const handleUserMenuClick = ({ key }) => {
+        switch (key) {
+            case 'profile':
+                setSelectedKey('profile');
+                break;
+            case 'notifications':
+                setSelectedKey('notifications');
+                break;
+            case 'achievements':
+                setSelectedKey('5-1'); // Badge & Pencapaian
+                break;
+            case 'schedule':
+                setSelectedKey('8-1'); // Jadwal Belajar
+                break;
+            case 'settings':
+                setSelectedKey('settings');
+                break;
+            case 'help':
+                // Open help/support page
+                window.open('/help', '_blank');
+                break;
+            case 'logout':
+                logout();
+                break;
+            default:
+                break;
+        }
     };
 
     // Menu items configuration
@@ -242,33 +273,6 @@ export default function Dashboard() {
                 },
             ],
         },
-        {
-            key: '9',
-            icon: <SettingOutlined />,
-            label: 'Pengaturan',
-            children: [
-                {
-                    key: '9-1',
-                    label: 'Profil',
-                },
-                {
-                    key: '9-2',
-                    label: 'Notifikasi',
-                },
-                {
-                    key: '9-3',
-                    label: 'Keamanan',
-                },
-                {
-                    key: '9-4',
-                    label: 'Preferensi',
-                },
-                {
-                    key: '9-5',
-                    label: 'Bantuan',
-                },
-            ],
-        },
     ];
 
     // User dropdown menu
@@ -279,9 +283,32 @@ export default function Dashboard() {
             label: 'Profil Saya',
         },
         {
+            key: 'notifications',
+            icon: <BellOutlined />,
+            label: 'Notifikasi',
+        },
+        {
+            key: 'achievements',
+            icon: <TrophyOutlined />,
+            label: 'Prestasi Saya',
+        },
+        {
+            key: 'schedule',
+            icon: <ClockCircleOutlined />,
+            label: 'Jadwal Belajar',
+        },
+        {
+            type: 'divider',
+        },
+        {
             key: 'settings',
             icon: <SettingOutlined />,
-            label: 'Pengaturan',
+            label: 'Pengaturan Akun',
+        },
+        {
+            key: 'help',
+            icon: <StarOutlined />,
+            label: 'Bantuan & Dukungan',
         },
         {
             type: 'divider',
@@ -290,7 +317,7 @@ export default function Dashboard() {
             key: 'logout',
             icon: <LogoutOutlined />,
             label: 'Logout',
-            onClick: handleLogout,
+            danger: true,
         },
     ];
 
@@ -509,13 +536,13 @@ export default function Dashboard() {
             case '8-4':
                 return <StudySchedule />;
 
-            // Settings sections
-            case '9-1':
-            case '9-2':
-            case '9-3':
-            case '9-4':
-            case '9-5':
+            // User menu sections (accessible from user dropdown)
+            case 'profile':
                 return <Profile />;
+            case 'notifications':
+                return <Notifications />;
+            case 'settings':
+                return <Profile />; // For now, settings redirects to profile
 
             default:
                 return (
@@ -627,7 +654,7 @@ export default function Dashboard() {
 
                         {/* User Menu */}
                         <Dropdown
-                            menu={{ items: userMenuItems }}
+                            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
                             placement="bottomRight"
                             trigger={['click']}
                         >
