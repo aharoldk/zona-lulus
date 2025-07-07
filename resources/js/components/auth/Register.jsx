@@ -254,110 +254,7 @@ const Register = () => {
         </div>
     );
 
-    // Step 3: Target & Preferences
-    const renderTargetPreferences = () => (
-        <div>
-            <Title level={4} style={{ textAlign: 'center', marginBottom: 24 }}>
-                <AimOutlined style={{ marginRight: 8 }} />
-                Target & Preferensi Belajar
-            </Title>
-
-            <Form.Item
-                name="target"
-                label="Target Ujian"
-                rules={[{ required: true, message: 'Pilih target ujian!' }]}
-            >
-                <Radio.Group size="large">
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                        <Radio value="tni">
-                            <div>
-                                <Text strong>TNI (Tentara Nasional Indonesia)</Text>
-                                <br />
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Persiapan seleksi masuk TNI AD, AL, AU
-                                </Text>
-                            </div>
-                        </Radio>
-                        <Radio value="polri">
-                            <div>
-                                <Text strong>POLRI (Kepolisian Republik Indonesia)</Text>
-                                <br />
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Persiapan seleksi masuk Polri semua tingkatan
-                                </Text>
-                            </div>
-                        </Radio>
-                        <Radio value="cpns">
-                            <div>
-                                <Text strong>CPNS (Calon Pegawai Negeri Sipil)</Text>
-                                <br />
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Persiapan tes SKD dan SKB CPNS
-                                </Text>
-                            </div>
-                        </Radio>
-                        <Radio value="bumn">
-                            <div>
-                                <Text strong>BUMN</Text>
-                                <br />
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Persiapan seleksi BUMN dan perusahaan negara
-                                </Text>
-                            </div>
-                        </Radio>
-                        <Radio value="lainnya">
-                            <div>
-                                <Text strong>Lainnya</Text>
-                                <br />
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Seleksi kedinasan dan instansi lainnya
-                                </Text>
-                            </div>
-                        </Radio>
-                    </Space>
-                </Radio.Group>
-            </Form.Item>
-
-            <Form.Item
-                name="education"
-                label="Pendidikan Terakhir"
-                rules={[{ required: true, message: 'Pilih pendidikan terakhir!' }]}
-            >
-                <Select placeholder="Pilih pendidikan terakhir" size="large">
-                    <Option value="sma">SMA/SMK/MA Sederajat</Option>
-                    <Option value="d3">Diploma 3 (D3)</Option>
-                    <Option value="s1">Sarjana (S1)</Option>
-                    <Option value="s2">Magister (S2)</Option>
-                </Select>
-            </Form.Item>
-
-            <Form.Item
-                name="experience_level"
-                label="Pengalaman Mengikuti Tes"
-                rules={[{ required: true, message: 'Pilih pengalaman Anda!' }]}
-            >
-                <Radio.Group size="large">
-                    <Radio value="beginner">Pemula (belum pernah ikut tes)</Radio>
-                    <Radio value="intermediate">Sudah pernah 1-2 kali</Radio>
-                    <Radio value="experienced">Berpengalaman (>3 kali)</Radio>
-                </Radio.Group>
-            </Form.Item>
-
-            <Form.Item
-                name="study_time"
-                label="Waktu Belajar yang Tersedia"
-            >
-                <Select placeholder="Berapa jam per hari?" size="large">
-                    <Option value="1">1-2 jam per hari</Option>
-                    <Option value="3">3-4 jam per hari</Option>
-                    <Option value="5">5-6 jam per hari</Option>
-                    <Option value="7">Lebih dari 6 jam per hari</Option>
-                </Select>
-            </Form.Item>
-        </div>
-    );
-
-    // Step 4: Confirmation
+    // Step 3: Confirmation (removed Target & Preferences step)
     const renderConfirmation = () => (
         <div>
             <Title level={4} style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -376,8 +273,8 @@ const Register = () => {
                     <Col span={16}>{formData.phone}</Col>
                     <Col span={8}><Text strong>Tanggal Lahir:</Text></Col>
                     <Col span={16}>{formData.date_of_birth ? formData.date_of_birth.format('DD-MM-YYYY') : '-'}</Col>
-                    <Col span={8}><Text strong>Target:</Text></Col>
-                    <Col span={16}>{formData.target?.toUpperCase()}</Col>
+                    <Col span={8}><Text strong>Pendidikan:</Text></Col>
+                    <Col span={16}>{formData.education}</Col>
                 </Row>
             </Card>
 
@@ -438,8 +335,6 @@ const Register = () => {
             case 1:
                 return renderPasswordSecurity();
             case 2:
-                return renderTargetPreferences();
-            case 3:
                 return renderConfirmation();
             default:
                 return renderBasicInfo();
@@ -497,7 +392,12 @@ const Register = () => {
 
         try {
             const submitData = { ...formData, ...values };
-            delete submitData.password_confirmation;
+            // Don't delete password_confirmation - Laravel needs it for validation
+
+            // Format date properly for backend
+            if (submitData.date_of_birth) {
+                submitData.date_of_birth = submitData.date_of_birth.format('YYYY-MM-DD');
+            }
 
             const response = await axios.post('/api/register', submitData);
 
@@ -530,11 +430,6 @@ const Register = () => {
             title: 'Keamanan',
             description: 'Password',
             icon: <LockOutlined />
-        },
-        {
-            title: 'Preferensi',
-            description: 'Target ujian',
-            icon: <AimOutlined />
         },
         {
             title: 'Konfirmasi',
@@ -634,7 +529,7 @@ const Register = () => {
                             form={form}
                             layout="vertical"
                             size="large"
-                            onFinish={currentStep === 3 ? handleSubmit : handleNext}
+                            onFinish={currentStep === 2 ? handleSubmit : handleNext}
                         >
                             {renderStepContent()}
 
@@ -657,7 +552,7 @@ const Register = () => {
                                             borderColor: '#2c3e50'
                                         }}
                                     >
-                                        {currentStep === 3 ? 'DAFTAR SEKARANG' : 'Selanjutnya'}
+                                        {currentStep === 2 ? 'DAFTAR SEKARANG' : 'Selanjutnya'}
                                     </Button>
                                 </Space>
                             </div>

@@ -12,21 +12,43 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
-            'email' => 'required|string|email|max:255|unique:users',
-            'phone' => 'required|string|min:10|max:15|unique:users|regex:/^[0-9]+$/',
-            'password' => ['required', 'confirmed', Rules\Password::min(8)
-                ->mixedCase()
-                ->numbers()
-                ->symbols()],
-            'date_of_birth' => 'required|date|before:' . now()->subYears(17)->format('Y-m-d') . '|after:' . now()->subYears(35)->format('Y-m-d'),
-            'target' => 'required|in:tni,polri,cpns,bumn,lainnya',
-            'education' => 'required|in:sma,d3,s1,s2',
-            'experience_level' => 'required|in:beginner,intermediate,experienced',
-            'study_time' => 'nullable|in:1,3,5,7',
-            'newsletter' => 'boolean'
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'phone' => 'required|string|min:10|max:15|unique:users',
+                'password' => 'required|string|min:8|confirmed',
+                'date_of_birth' => 'required|date|before:-17 years|after:-35 years',
+                'education' => 'nullable|in:sma,d3,s1,s2',
+                'newsletter' => 'boolean'
+            ], [
+                'name.required' => 'Nama lengkap wajib diisi.',
+                'name.string' => 'Nama harus berupa teks.',
+                'name.max' => 'Nama maksimal 255 karakter.',
+                'email.required' => 'Email wajib diisi.',
+                'email.email' => 'Format email tidak valid.',
+                'email.unique' => 'Email sudah terdaftar.',
+                'phone.required' => 'Nomor HP wajib diisi.',
+                'phone.min' => 'Nomor HP minimal 10 digit.',
+                'phone.max' => 'Nomor HP maksimal 15 digit.',
+                'phone.unique' => 'Nomor HP sudah terdaftar.',
+                'password.required' => 'Password wajib diisi.',
+                'password.min' => 'Password minimal 8 karakter.',
+                'password.confirmed' => 'Konfirmasi password tidak cocok.',
+                'date_of_birth.required' => 'Tanggal lahir wajib diisi.',
+                'date_of_birth.date' => 'Format tanggal lahir tidak valid.',
+                'date_of_birth.before' => 'Umur minimal 17 tahun.',
+                'date_of_birth.after' => 'Umur maksimal 35 tahun.',
+                'education.in' => 'Pilihan pendidikan tidak valid.',
+                'newsletter.boolean' => 'Pilihan newsletter tidak valid.'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         try {
             $user = User::create([
@@ -34,26 +56,9 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => Hash::make($request->password),
-                'birth_date' => $request->birth_date,
-                'address' => $request->address,
-                'target' => $request->target,
-                'education' => $request->education,
-                'experience_level' => $request->experience_level,
-                'study_time' => $request->study_time,
-                'newsletter_subscription' => $request->newsletter ?? true,
-                'registration_completed_at' => now(),
+                'birth_date' => $request->date_of_birth,
+                'education' => $request->education
             ]);
-
-            // Create welcome notification
-            $user->notifications()->create([
-                'title' => 'Selamat datang di Zona Lulus!',
-                'message' => 'Terima kasih telah bergabung. Mulai perjalanan belajar Anda sekarang!',
-                'type' => 'success',
-                'priority' => 'high'
-            ]);
-
-            // Send welcome email (if email service is configured)
-            // Mail::to($user->email)->send(new WelcomeEmail($user));
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -62,7 +67,7 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'user' => $user,
-                'message' => 'Registration successful'
+                'message' => 'Pendaftaran berhasil! Selamat datang di Zona Lulus.'
             ], 201);
 
         } catch (\Exception $e) {

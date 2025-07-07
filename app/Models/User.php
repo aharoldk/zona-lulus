@@ -23,24 +23,13 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
-        'birth_date',
-        'address',
+        'birth_date', // Use actual database column name
         'education',
         'target',
-        'avatar',
-        'two_factor_enabled',
-        'login_alerts',
-        'email_course_updates',
-        'email_study_reminders',
-        'email_tryout_results',
-        'push_deadline_reminders',
-        'push_achievements',
-        // Admin fields
-        'is_admin',
-        'role',
         'experience_level',
         'study_time',
         'newsletter_subscription',
+        'avatar',
         'registration_completed_at',
         'last_login_at',
         // Settings fields
@@ -81,7 +70,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'birth_date' => 'date',
+            'birth_date' => 'date', // Use actual database column name
             'two_factor_enabled' => 'boolean',
             'login_alerts' => 'boolean',
             'email_course_updates' => 'boolean',
