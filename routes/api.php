@@ -10,6 +10,8 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\StudyController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -67,4 +69,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/bulk-delete', [NotificationController::class, 'bulkDelete']);
     Route::delete('/notifications/clear-all', [NotificationController::class, 'clearAll']);
     Route::post('/notifications', [NotificationController::class, 'store']);
+
+    // Study Tracker routes
+    Route::get('/study/stats', [StudyController::class, 'getStats']);
+    Route::get('/study/recent-activity', [StudyController::class, 'getRecentActivity']);
+    Route::post('/study/log-session', [StudyController::class, 'logSession']);
+
+    // Analytics route
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
+});
+
+// Admin routes
+Route::prefix('admin')->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard']);
+    Route::get('/users', [App\Http\Controllers\Admin\AdminController::class, 'users']);
+
+    // Payment management routes
+    Route::get('/payments', [App\Http\Controllers\Admin\PaymentController::class, 'index']);
+    Route::get('/payments/{id}', [App\Http\Controllers\Admin\PaymentController::class, 'show']);
+    Route::put('/payments/{id}/status', [App\Http\Controllers\Admin\PaymentController::class, 'updateStatus']);
+    Route::post('/payments/{id}/refund', [App\Http\Controllers\Admin\PaymentController::class, 'refund']);
+    Route::get('/payments/analytics', [App\Http\Controllers\Admin\PaymentController::class, 'analytics']);
 });

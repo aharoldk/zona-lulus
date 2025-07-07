@@ -28,15 +28,10 @@ import {
     BulbOutlined,
     BookOutlined,
     QuestionCircleOutlined,
-    TrophyOutlined,
     ClockCircleOutlined,
-    TargetOutlined,
-    LightbulbOutlined,
-    HeartOutlined,
-    StarOutlined,
-    ThunderboltOutlined,
     SmileOutlined,
-    MessageOutlined
+    MessageOutlined,
+    AimOutlined
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
@@ -404,7 +399,7 @@ export default function AIStudyAssistant() {
                 <TabPane
                     tab={
                         <span>
-                            <TargetOutlined />
+                            <AimOutlined />
                             Study Plan
                         </span>
                     }

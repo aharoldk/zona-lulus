@@ -35,6 +35,30 @@ class User extends Authenticatable
         'email_tryout_results',
         'push_deadline_reminders',
         'push_achievements',
+        // Admin fields
+        'is_admin',
+        'role',
+        'experience_level',
+        'study_time',
+        'newsletter_subscription',
+        'registration_completed_at',
+        'last_login_at',
+        // Settings fields
+        'notifications_email',
+        'notifications_push',
+        'notifications_sms',
+        'notifications_study_reminders',
+        'notifications_achievement_alerts',
+        'notifications_weekly_reports',
+        'privacy_profile_visibility',
+        'privacy_show_progress',
+        'privacy_show_achievements',
+        'privacy_allow_messages',
+        'preferences_language',
+        'preferences_timezone',
+        'preferences_theme',
+        'preferences_auto_save',
+        'preferences_sound_effects'
     ];
 
     /**
@@ -77,5 +101,52 @@ class User extends Authenticatable
     public function courseProgress()
     {
         return $this->hasMany(CourseProgress::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function processedRefunds()
+    {
+        return $this->hasMany(Payment::class, 'refund_processed_by');
+    }
+
+    public function statusUpdates()
+    {
+        return $this->hasMany(Payment::class, 'status_updated_by');
+    }
+
+    public function paymentStatusLogs()
+    {
+        return $this->hasMany(PaymentStatusLog::class, 'changed_by');
+    }
+
+    // Admin-related methods
+    public function isAdmin()
+    {
+        return $this->is_admin || $this->role === 'admin';
+    }
+
+    public function canManagePayments()
+    {
+        return $this->isAdmin() || in_array($this->role, ['admin', 'finance']);
+    }
+
+    // Scopes
+    public function scopeAdmins($query)
+    {
+        return $query->where('is_admin', true)->orWhere('role', 'admin');
+    }
+
+    public function scopeActiveUsers($query)
+    {
+        return $query->where('last_login_at', '>=', now()->subDays(30));
     }
 }
