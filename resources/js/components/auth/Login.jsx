@@ -112,7 +112,7 @@ export default function Login() {
                             <Form.Item>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <Checkbox>Ingat saya</Checkbox>
-                                    <Link to="/auth/forgot-password" style={{ fontSize: window.innerWidth < 768 ? '13px' : '14px' }}>
+                                    <Link to="/forgot-password" style={{ fontSize: window.innerWidth < 768 ? '13px' : '14px' }}>
                                         Lupa password?
                                     </Link>
                                 </div>
@@ -138,7 +138,7 @@ export default function Login() {
                             <div style={{ textAlign: 'center', marginTop: '24px' }}>
                                 <Text type="secondary" style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
                                     Belum punya akun?{' '}
-                                    <Link to="/auth/register" style={{ fontWeight: '500' }}>
+                                    <Link to="/register" style={{ fontWeight: '500' }}>
                                         Daftar sekarang
                                     </Link>
                                 </Text>

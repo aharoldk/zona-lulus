@@ -15,6 +15,7 @@ import {
     Alert,
     Space,
     Modal,
+    DatePicker,
 } from 'antd';
 import {
     UserOutlined,
@@ -25,6 +26,7 @@ import {
     EyeInvisibleOutlined,
     AimOutlined,
     CheckCircleOutlined,
+    CalendarOutlined,
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -126,6 +128,51 @@ const Register = () => {
                     size="large"
                 />
             </Form.Item>
+
+            <Form.Item
+                name="date_of_birth"
+                label="Tanggal Lahir"
+                rules={[
+                    { required: true, message: 'Tanggal lahir wajib diisi!' },
+                    {
+                        validator: (_, value) => {
+                            if (!value) return Promise.resolve();
+                            const age = new Date().getFullYear() - value.year();
+                            if (age < 17) {
+                                return Promise.reject(new Error('Umur minimal 17 tahun!'));
+                            }
+                            if (age > 35) {
+                                return Promise.reject(new Error('Umur maksimal 35 tahun untuk seleksi kedinasan!'));
+                            }
+                            return Promise.resolve();
+                        },
+                    },
+                ]}
+            >
+                <DatePicker
+                    style={{ width: '100%' }}
+                    placeholder="Pilih tanggal lahir"
+                    size="large"
+                    format="DD-MM-YYYY"
+                    suffixIcon={<CalendarOutlined />}
+                    disabledDate={(current) => {
+                        // Disable future dates and dates that would make user younger than 17
+                        const minDate = new Date();
+                        minDate.setFullYear(minDate.getFullYear() - 35);
+                        const maxDate = new Date();
+                        maxDate.setFullYear(maxDate.getFullYear() - 17);
+                        return current && (current < minDate || current > maxDate);
+                    }}
+                />
+            </Form.Item>
+
+            <Alert
+                message="Persyaratan Umur"
+                description="Untuk seleksi TNI, POLRI, dan CPNS umumnya memiliki batas umur 17-35 tahun. Pastikan tanggal lahir Anda sesuai."
+                type="info"
+                showIcon
+                style={{ marginTop: 8 }}
+            />
         </div>
     );
 
@@ -327,6 +374,8 @@ const Register = () => {
                     <Col span={16}>{formData.email}</Col>
                     <Col span={8}><Text strong>HP:</Text></Col>
                     <Col span={16}>{formData.phone}</Col>
+                    <Col span={8}><Text strong>Tanggal Lahir:</Text></Col>
+                    <Col span={16}>{formData.date_of_birth ? formData.date_of_birth.format('DD-MM-YYYY') : '-'}</Col>
                     <Col span={8}><Text strong>Target:</Text></Col>
                     <Col span={16}>{formData.target?.toUpperCase()}</Col>
                 </Row>

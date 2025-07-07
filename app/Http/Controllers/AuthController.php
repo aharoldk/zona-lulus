@@ -20,8 +20,7 @@ class AuthController extends Controller
                 ->mixedCase()
                 ->numbers()
                 ->symbols()],
-            'birth_date' => 'required|date|before:' . now()->subYears(16)->format('Y-m-d'),
-            'address' => 'required|string|min:10|max:500',
+            'date_of_birth' => 'required|date|before:' . now()->subYears(17)->format('Y-m-d') . '|after:' . now()->subYears(35)->format('Y-m-d'),
             'target' => 'required|in:tni,polri,cpns,bumn,lainnya',
             'education' => 'required|in:sma,d3,s1,s2',
             'experience_level' => 'required|in:beginner,intermediate,experienced',

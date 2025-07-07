@@ -2,14 +2,9 @@ import React from 'react';
 
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
-import MainLayout from './layouts/MainLayout';
-import AuthLayout from './layouts/AuthLayout';
-// import Home from '../pages/Home';
-// import CourseList from './courses/CourseList';
-// import CourseDetail from './courses/CourseDetail';
-// import TestSimulator from './tests/TestSimulator';
 import Login from './auth/Login';
 import Register from './auth/Register';
+import ForgotPassword from './auth/ForgotPassword';
 import Dashboard from './Dashboard';
 import ProtectedRoute from './ProtectedRoute';
 import NotFound from './NotFound';
@@ -20,7 +15,8 @@ function App() {
             <Routes>
                 <Route path="login" element={<Login />} />
                 <Route path="register" element={<Register />} />
-                {/* Protected routes */}
+                <Route path="forgot-password" element={<ForgotPassword />} />
+
                 <Route
                     path="/"
                     element={
@@ -30,7 +26,6 @@ function App() {
                     }
                 />
 
-                {/* 404 page */}
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </AuthProvider>
