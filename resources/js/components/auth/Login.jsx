@@ -15,7 +15,7 @@ export default function Login() {
     const location = useLocation();
 
     // Get the intended destination from location state or default to dashboard
-    const from = location.state?.from?.pathname || '/dashboard';
+    const from = location.state?.from?.pathname || '/';
 
     const handleSubmit = async (values) => {
         setLoading(true);

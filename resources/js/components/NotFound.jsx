@@ -15,11 +15,7 @@ export default function NotFound() {
     };
 
     const handleGoHome = () => {
-        if (user) {
-            navigate('/dashboard');
-        } else {
             navigate('/');
-        }
     };
 
     return (
