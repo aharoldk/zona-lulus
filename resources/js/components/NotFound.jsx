@@ -3,6 +3,7 @@ import { Result, Button, Typography, Space } from 'antd';
 import { HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ROUTES } from '../constants/routes';
 
 const { Paragraph } = Typography;
 
@@ -15,7 +16,7 @@ export default function NotFound() {
     };
 
     const handleGoHome = () => {
-            navigate('/');
+            navigate(ROUTES.DASHBOARD);
     };
 
     return (
@@ -120,7 +121,7 @@ export default function NotFound() {
                         {!user ? (
                             <>
                                 <Link
-                                    to="/auth/login"
+                                    to={ROUTES.LOGIN}
                                     style={{
                                         color: '#1890ff',
                                         textDecoration: 'none',
@@ -131,7 +132,7 @@ export default function NotFound() {
                                     🔐 Login
                                 </Link>
                                 <Link
-                                    to="/auth/register"
+                                    to={ROUTES.REGISTER}
                                     style={{
                                         color: '#1890ff',
                                         textDecoration: 'none',
@@ -145,7 +146,7 @@ export default function NotFound() {
                         ) : (
                             <>
                                 <Link
-                                    to="/dashboard"
+                                    to={ROUTES.DASHBOARD}
                                     style={{
                                         color: '#1890ff',
                                         textDecoration: 'none',

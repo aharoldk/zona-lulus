@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
+import { ROUTES } from '../../constants/routes';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -12,7 +13,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link to="/" className="text-xl font-bold text-gray-900">
+              <Link to={ROUTES.DASHBOARD} className="text-xl font-bold text-gray-900">
                 Zona Lulus
               </Link>
             </div>
@@ -23,7 +24,7 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link
-                  to="/dashboard"
+                  to={ROUTES.DASHBOARD}
                   className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
                   Dashboard
@@ -38,13 +39,13 @@ export default function Navbar() {
             ) : (
               <>
                 <Link
-                  to="/auth/login"
+                  to={ROUTES.LOGIN}
                   className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
                   Login
                 </Link>
                 <Link
-                  to="/auth/register"
+                  to={ROUTES.REGISTER}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
                 >
                   Register
@@ -77,7 +78,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <Link
-                    to="/dashboard"
+                    to={ROUTES.DASHBOARD}
                     className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                     onClick={() => setIsMenuOpen(false)}
                   >
@@ -96,14 +97,14 @@ export default function Navbar() {
               ) : (
                 <>
                   <Link
-                    to="/auth/login"
+                    to={ROUTES.LOGIN}
                     className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Login
                   </Link>
                   <Link
-                    to="/auth/register"
+                    to={ROUTES.REGISTER}
                     className="block px-3 py-2 text-base font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md"
                     onClick={() => setIsMenuOpen(false)}
                   >

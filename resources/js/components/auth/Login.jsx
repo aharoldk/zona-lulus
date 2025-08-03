@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, Alert, Checkbox, Typography, Row, Col } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { ROUTES } from '../../constants/routes';
 
 const { Title, Text } = Typography;
 
@@ -15,7 +16,7 @@ export default function Login() {
     const location = useLocation();
 
     // Get the intended destination from location state or default to dashboard
-    const from = location.state?.from?.pathname || '/';
+    const from = location.state?.from?.pathname || ROUTES.DASHBOARD;
 
     const handleSubmit = async (values) => {
         setLoading(true);
@@ -112,7 +113,7 @@ export default function Login() {
                             <Form.Item>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <Checkbox>Ingat saya</Checkbox>
-                                    <Link to="/forgot-password" style={{ fontSize: window.innerWidth < 768 ? '13px' : '14px' }}>
+                                    <Link to={ROUTES.FORGOT_PASSWORD} style={{ fontSize: window.innerWidth < 768 ? '13px' : '14px' }}>
                                         Lupa password?
                                     </Link>
                                 </div>
@@ -138,7 +139,7 @@ export default function Login() {
                             <div style={{ textAlign: 'center', marginTop: '24px' }}>
                                 <Text type="secondary" style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
                                     Belum punya akun?{' '}
-                                    <Link to="/register" style={{ fontWeight: '500' }}>
+                                    <Link to={ROUTES.REGISTER} style={{ fontWeight: '500' }}>
                                         Daftar sekarang
                                     </Link>
                                 </Text>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ROUTES } from '../constants/routes';
 
 const api = axios.create({
     baseURL: '/api',
@@ -21,7 +22,7 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
-            window.location = '/auth/login';
+            window.location = ROUTES.LOGIN;
         }
         return Promise.reject(error);
     }

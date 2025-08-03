@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ROUTES } from '../../constants/routes';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -399,13 +400,13 @@ const Register = () => {
                 submitData.date_of_birth = submitData.date_of_birth.format('YYYY-MM-DD');
             }
 
-            const response = await axios.post('/api/register', submitData);
+            const response = await axios.post(ROUTES.API.REGISTER, submitData);
 
             setWelcomeMessage(response.data.message);
 
             // Redirect after 3 seconds
             setTimeout(() => {
-                navigate('/login');
+                navigate(ROUTES.LOGIN);
             }, 3000);
 
         } catch (error) {
@@ -562,7 +563,7 @@ const Register = () => {
                         <div style={{ textAlign: 'center', marginTop: '24px' }}>
                             <Text type="secondary">
                                 Sudah punya akun?{' '}
-                                <Link to="/login" style={{ color: '#1890ff' }}>
+                                <Link to={ROUTES.LOGIN} style={{ color: '#1890ff' }}>
                                     Masuk di sini
                                 </Link>
                             </Text>
