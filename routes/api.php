@@ -99,18 +99,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Module purchase routes
     Route::post('/modules/{module}/purchase', [PaymentController::class, 'purchaseModule']);
 
-    // Course purchase routes
-    Route::post('/courses/{course}/purchase', [PaymentController::class, 'purchaseCourse']);
-
-    // Test/Tryout purchase routes
-    Route::post('/tests/{test}/purchase', [PaymentController::class, 'purchaseTest']);
-
     // Coin routes
     Route::prefix('coins')->group(function () {
+        Route::get('/packages', [CoinController::class, 'getPackages']);
+        Route::post('/purchase', [CoinController::class, 'purchase']);
         Route::get('/balance', [CoinController::class, 'getBalance']);
-        Route::get('/packages', [CoinController::class, 'getCoinPackages']);
-        Route::post('/purchase', [CoinController::class, 'purchaseCoins']);
-        Route::post('/spend', [CoinController::class, 'spendCoins']);
         Route::get('/transactions', [CoinController::class, 'getTransactionHistory']);
     });
 });

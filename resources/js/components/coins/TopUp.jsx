@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Card,
     Row,
@@ -10,91 +10,52 @@ import {
     Radio,
     message,
     Modal,
-    Alert
+    Alert,
+    Spin
 } from 'antd';
 import {
     DollarCircleOutlined,
-    CreditCardOutlined,
-    WalletOutlined,
-    BankOutlined,
-    PhoneOutlined,
     CheckCircleOutlined
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 export default function TopUp() {
+    const [coinPackages, setCoinPackages] = useState([]);
     const [selectedPackage, setSelectedPackage] = useState(null);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('credit_card');
     const [loading, setLoading] = useState(false);
+    const [packagesLoading, setPackagesLoading] = useState(true);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    // Coin packages
-    const coinPackages = [
-        {
-            id: 'package_1',
-            coins: 100,
-            price: 10000,
-            bonus: 0,
-            popular: false
-        },
-        {
-            id: 'package_2',
-            coins: 500,
-            price: 45000,
-            bonus: 50,
-            popular: true
-        },
-        {
-            id: 'package_3',
-            coins: 1000,
-            price: 85000,
-            bonus: 150,
-            popular: false
-        },
-        {
-            id: 'package_4',
-            coins: 2000,
-            price: 160000,
-            bonus: 400,
-            popular: false
-        },
-        {
-            id: 'package_5',
-            coins: 5000,
-            price: 375000,
-            bonus: 1250,
-            popular: false
-        }
-    ];
+    // Load coin packages from API
+    useEffect(() => {
+        loadCoinPackages();
+    }, []);
 
-    // Payment methods
-    const paymentMethods = [
-        {
-            id: 'credit_card',
-            name: 'Kartu Kredit/Debit',
-            icon: <CreditCardOutlined />,
-            description: 'Visa, Mastercard, JCB'
-        },
-        {
-            id: 'e_wallet',
-            name: 'E-Wallet',
-            icon: <WalletOutlined />,
-            description: 'GoPay, OVO, DANA, LinkAja'
-        },
-        {
-            id: 'bank_transfer',
-            name: 'Transfer Bank',
-            icon: <BankOutlined />,
-            description: 'BCA, Mandiri, BNI, BRI'
-        },
-        {
-            id: 'virtual_account',
-            name: 'Virtual Account',
-            icon: <PhoneOutlined />,
-            description: 'Bayar di ATM atau Mobile Banking'
+    const loadCoinPackages = async () => {
+        try {
+            setPackagesLoading(true);
+            const response = await fetch('/api/coins/packages', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Loaded packages:', data.data); // Debug log
+                setCoinPackages(data.data);
+            } else {
+                message.error('Gagal memuat paket koin');
+            }
+        } catch (error) {
+            console.error('Error loading coin packages:', error);
+            message.error('Terjadi kesalahan saat memuat paket koin');
+        } finally {
+            setPackagesLoading(false);
         }
-    ];
+    };
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('id-ID', {
@@ -105,6 +66,7 @@ export default function TopUp() {
     };
 
     const handlePackageSelect = (pkg) => {
+        console.log('Selecting package:', pkg.id, pkg.name); // Debug log
         setSelectedPackage(pkg);
     };
 
@@ -119,21 +81,65 @@ export default function TopUp() {
     const handleConfirmPurchase = async () => {
         setLoading(true);
         try {
-            // Here you would integrate with your payment gateway
-            // For now, we'll simulate a successful purchase
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const response = await fetch('/api/coins/purchase', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    package_id: selectedPackage.id
+                })
+            });
 
-            setShowConfirmModal(false);
-            message.success('Pembelian koin berhasil! Koin telah ditambahkan ke akun Anda.');
-            setSelectedPackage(null);
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setShowConfirmModal(false);
+
+                if (window.snap) {
+                    window.snap.pay(data.data.snap_token, {
+                        onSuccess: function(result) {
+                            message.success('Pembayaran berhasil! Koin telah ditambahkan ke akun Anda.');
+                            setSelectedPackage(null);
+                            // Refresh user data to update coin balance
+                            window.location.reload();
+                        },
+                        onPending: function(result) {
+                            message.info('Pembayaran sedang diproses. Anda akan diberitahu jika pembayaran berhasil.');
+                            setSelectedPackage(null);
+                        },
+                        onError: function(result) {
+                            message.error('Pembayaran gagal. Silakan coba lagi.');
+                        },
+                        onClose: function() {
+                            message.info('Anda menutup popup pembayaran sebelum menyelesaikan pembayaran');
+                        }
+                    });
+                } else {
+                    message.error('Sistem pembayaran tidak tersedia');
+                }
+            } else {
+                message.error(data.message || 'Terjadi kesalahan saat memproses pembayaran');
+            }
         } catch (error) {
+            console.error('Error purchasing coins:', error);
             message.error('Terjadi kesalahan saat memproses pembayaran');
         } finally {
             setLoading(false);
         }
     };
 
-    const selectedMethodInfo = paymentMethods.find(method => method.id === selectedPaymentMethod);
+    if (packagesLoading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>
+                    <Text>Memuat paket koin...</Text>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -143,110 +149,107 @@ export default function TopUp() {
             </Title>
 
             <Row gutter={[24, 24]}>
-                {/* Coin Packages */}
                 <Col xs={24} lg={16}>
                     <Card title="Pilih Paket Koin" style={{ marginBottom: '24px' }}>
                         <Row gutter={[16, 16]}>
-                            {coinPackages.map((pkg) => (
-                                <Col xs={12} sm={8} md={6} key={pkg.id}>
-                                    <Card
-                                        hoverable
-                                        size="small"
-                                        className={selectedPackage?.id === pkg.id ? 'selected-package' : ''}
-                                        onClick={() => handlePackageSelect(pkg)}
-                                        style={{
-                                            border: selectedPackage?.id === pkg.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                                            position: 'relative'
-                                        }}
-                                    >
-                                        {pkg.popular && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: -10,
-                                                right: -10,
-                                                background: '#ff4d4f',
-                                                color: 'white',
-                                                padding: '2px 8px',
-                                                borderRadius: '10px',
-                                                fontSize: '12px',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                POPULER
-                                            </div>
-                                        )}
+                            {coinPackages.map((pkg) => {
+                                const isSelected = selectedPackage?.id === pkg.id;
+                                console.log(`Package ${pkg.id} selected:`, isSelected); // Debug log
 
-                                        <div style={{ textAlign: 'center' }}>
-                                            <DollarCircleOutlined
-                                                style={{
-                                                    fontSize: '32px',
-                                                    color: '#faad14',
-                                                    marginBottom: '8px'
-                                                }}
-                                            />
-                                            <div>
-                                                <Text strong style={{ fontSize: '18px' }}>
-                                                    {pkg.coins.toLocaleString()}
-                                                </Text>
-                                                {pkg.bonus > 0 && (
-                                                    <Text style={{
-                                                        color: '#52c41a',
-                                                        fontSize: '12px',
-                                                        display: 'block'
-                                                    }}>
-                                                        +{pkg.bonus} Bonus
-                                                    </Text>
-                                                )}
-                                                <Text>Koin</Text>
-                                            </div>
-                                            <Divider style={{ margin: '8px 0' }} />
-                                            <Text strong style={{ color: '#1890ff' }}>
-                                                {formatCurrency(pkg.price)}
-                                            </Text>
-                                        </div>
-
-                                        {selectedPackage?.id === pkg.id && (
-                                            <CheckCircleOutlined
-                                                style={{
+                                return (
+                                    <Col xs={12} sm={8} md={6} key={pkg.id}>
+                                        <Card
+                                            hoverable
+                                            size="small"
+                                            className={isSelected ? 'selected-package' : ''}
+                                            onClick={() => handlePackageSelect(pkg)}
+                                            style={{
+                                                border: isSelected ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                                                position: 'relative',
+                                                backgroundColor: isSelected ? '#f6ffed' : 'white',
+                                                cursor: 'pointer',
+                                                height: '150px',
+                                                display: 'flex',
+                                                flexDirection: 'column'
+                                            }}
+                                            bodyStyle={{
+                                                padding: '12px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                height: '100%',
+                                                justifyContent: 'space-between'
+                                            }}
+                                        >
+                                            {pkg.popular && (
+                                                <div style={{
                                                     position: 'absolute',
-                                                    top: '8px',
-                                                    right: '8px',
-                                                    color: '#1890ff',
-                                                    fontSize: '16px'
-                                                }}
-                                            />
-                                        )}
-                                    </Card>
-                                </Col>
-                            ))}
-                        </Row>
-                    </Card>
+                                                    top: -10,
+                                                    right: -10,
+                                                    background: '#ff4d4f',
+                                                    color: 'white',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '10px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    POPULER
+                                                </div>
+                                            )}
 
-                    {/* Payment Methods */}
-                    <Card title="Metode Pembayaran">
-                        <Radio.Group
-                            value={selectedPaymentMethod}
-                            onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                            style={{ width: '100%' }}
-                        >
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                                {paymentMethods.map((method) => (
-                                    <Radio value={method.id} key={method.id} style={{ width: '100%' }}>
-                                        <Card size="small" style={{ width: '100%', marginLeft: '8px' }}>
-                                            <Space>
-                                                {method.icon}
-                                                <div>
-                                                    <Text strong>{method.name}</Text>
-                                                    <br />
-                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                        {method.description}
+                                            <div style={{
+                                                textAlign: 'center',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                height: '100%'
+                                            }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <DollarCircleOutlined
+                                                        style={{
+                                                            fontSize: '32px',
+                                                            color: '#faad14',
+                                                            marginBottom: '8px'
+                                                        }}
+                                                    />
+                                                    <div>
+                                                        <Text strong style={{ fontSize: '18px' }}>
+                                                            {pkg.coins.toLocaleString()} Koin
+                                                        </Text>
+                                                        {pkg.bonus > 0 && (
+                                                            <Text style={{
+                                                                color: '#52c41a',
+                                                                fontSize: '12px',
+                                                                display: 'block'
+                                                            }}>
+                                                                +{pkg.bonus} Bonus
+                                                            </Text>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ marginTop: 'auto' }}>
+                                                    <Divider style={{ margin: '8px 0' }} />
+                                                    <Text strong style={{ color: '#1890ff' }}>
+                                                        {formatCurrency(pkg.price)}
                                                     </Text>
                                                 </div>
-                                            </Space>
+                                            </div>
+
+                                            {isSelected && (
+                                                <CheckCircleOutlined
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '8px',
+                                                        right: '8px',
+                                                        color: '#1890ff',
+                                                        fontSize: '16px'
+                                                    }}
+                                                />
+                                            )}
                                         </Card>
-                                    </Radio>
-                                ))}
-                            </Space>
-                        </Radio.Group>
+                                    </Col>
+                                );
+                            })}
+                        </Row>
                     </Card>
                 </Col>
 
@@ -284,11 +287,6 @@ export default function TopUp() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <Text>Harga:</Text>
                                     <Text strong>{formatCurrency(selectedPackage.price)}</Text>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Text>Metode Pembayaran:</Text>
-                                    <Text>{selectedMethodInfo?.name}</Text>
                                 </div>
 
                                 <Divider />
@@ -347,10 +345,6 @@ export default function TopUp() {
                                     {selectedPackage.coins.toLocaleString()} Koin
                                     {selectedPackage.bonus > 0 && ` (+${selectedPackage.bonus} Bonus)`}
                                 </Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text>Metode Pembayaran:</Text>
-                                <Text strong>{selectedMethodInfo?.name}</Text>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Text>Total Pembayaran:</Text>

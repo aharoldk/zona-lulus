@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             TestSeeder::class,
             QuestionSeeder::class,
             CourseSeeder::class,
+            CoinPackageSeeder::class,
         ]);
     }
 }

@@ -167,6 +167,125 @@ class MidtransService
     }
 
     /**
+     * Create payment record for coin purchase
+     */
+    public function createCoinPayment(User $user, $coinAmount, $priceAmount, $coinPackageDetails = [])
+    {
+        $orderId = 'ZL-COIN-' . $user->id . '-' . time();
+
+        $payment = Payment::create([
+            'user_id' => $user->id,
+            'module_id' => null,
+            'course_id' => null,
+            'test_id' => null,
+            'midtrans_order_id' => $orderId,
+            'invoice_number' => $this->generateInvoiceNumber(),
+            'amount' => $priceAmount,
+            'payment_method' => 'midtrans',
+            'status' => 'pending',
+            'description' => "Pembelian {$coinAmount} koin" . (isset($coinPackageDetails['bonus']) ? " (+{$coinPackageDetails['bonus']} bonus)" : ""),
+            'metadata' => [
+                'type' => 'coin_purchase',
+                'coin_amount' => $coinAmount,
+                'bonus_coins' => $coinPackageDetails['bonus'] ?? 0,
+                'total_coins' => $coinAmount + ($coinPackageDetails['bonus'] ?? 0),
+                'package_details' => $coinPackageDetails
+            ],
+            'expires_at' => now()->addHours(24)
+        ]);
+
+        Log::info('Coin Payment Created', [
+            'payment_id' => $payment->id,
+            'user_id' => $user->id,
+            'coin_amount' => $coinAmount,
+            'price_amount' => $priceAmount,
+            'total_coins_with_bonus' => $coinAmount + ($coinPackageDetails['bonus'] ?? 0)
+        ]);
+
+        return $payment;
+    }
+
+    /**
+     * Create Snap token for coin payment
+     */
+    public function createCoinSnapToken(Payment $payment)
+    {
+        $metadata = $payment->metadata ?? [];
+        $coinAmount = $metadata['coin_amount'] ?? 0;
+        $bonusCoins = $metadata['bonus_coins'] ?? 0;
+        $totalCoins = $metadata['total_coins'] ?? $coinAmount;
+
+        $itemName = "Paket {$coinAmount} Koin";
+        if ($bonusCoins > 0) {
+            $itemName .= " (+{$bonusCoins} Bonus)";
+        }
+
+        $params = [
+            'transaction_details' => [
+                'order_id' => $payment->midtrans_order_id,
+                'gross_amount' => (int) $payment->amount
+            ],
+            'customer_details' => [
+                'first_name' => $payment->user->name,
+                'email' => $payment->user->email,
+                'phone' => $payment->user->phone ?? '',
+            ],
+            'item_details' => [
+                [
+                    'id' => 'coin_package_' . $coinAmount,
+                    'price' => (int) $payment->amount,
+                    'quantity' => 1,
+                    'name' => $itemName,
+                    'category' => 'Digital Currency'
+                ]
+            ],
+            'callbacks' => [
+                'finish' => route('payment.finish', $payment->id)
+            ],
+            'expiry' => [
+                'start_time' => now()->format('Y-m-d H:i:s O'),
+                'unit' => 'hours',
+                'duration' => 24
+            ],
+            'custom_field1' => 'coin_purchase',
+            'custom_field2' => $totalCoins
+        ];
+
+        try {
+            $response = Http::withBasicAuth($this->serverKey, '')
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($this->snapUrl, $params);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('Midtrans Coin Snap Token Created', [
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->midtrans_order_id,
+                    'coin_amount' => $coinAmount,
+                    'total_coins' => $totalCoins
+                ]);
+                return $data['token'] ?? null;
+            }
+
+            Log::error('Midtrans Coin Snap Token Error', [
+                'payment_id' => $payment->id,
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            return null;
+        } catch (Exception $e) {
+            Log::error('Midtrans Coin Snap Token Exception', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * Process Midtrans webhook
      */
     public function processWebhook($data)
@@ -260,27 +379,80 @@ class MidtransService
             'status_updated_at' => now()
         ]);
 
-        // Grant module access to user
-        if ($payment->module_id) {
-            $this->grantModuleAccess($payment);
-        }
+        // Check if this is a coin purchase
+        $metadata = $payment->metadata ?? [];
+        if (isset($metadata['type']) && $metadata['type'] === 'coin_purchase') {
+            $this->processCoinPurchase($payment);
+        } else {
+            // Grant module access to user
+            if ($payment->module_id) {
+                $this->grantModuleAccess($payment);
+            }
 
-        // Grant course access to user
-        if ($payment->course_id) {
-            $this->grantCourseAccess($payment);
-        }
+            // Grant course access to user
+            if ($payment->course_id) {
+                $this->grantCourseAccess($payment);
+            }
 
-        // Grant test access to user
-        if ($payment->test_id) {
-            $this->grantTestAccess($payment);
+            // Grant test access to user
+            if ($payment->test_id) {
+                $this->grantTestAccess($payment);
+            }
         }
 
         Log::info('Payment completed and access granted', [
             'payment_id' => $payment->id,
             'user_id' => $payment->user_id,
             'module_id' => $payment->module_id,
-            'course_id' => $payment->course_id
+            'course_id' => $payment->course_id,
+            'is_coin_purchase' => isset($metadata['type']) && $metadata['type'] === 'coin_purchase'
         ]);
+    }
+
+    /**
+     * Process coin purchase and add coins to user account
+     */
+    private function processCoinPurchase(Payment $payment)
+    {
+        $metadata = $payment->metadata ?? [];
+        $totalCoins = $metadata['total_coins'] ?? 0;
+        $coinAmount = $metadata['coin_amount'] ?? 0;
+        $bonusCoins = $metadata['bonus_coins'] ?? 0;
+
+        if ($totalCoins > 0) {
+            // Add coins to user account
+            $user = $payment->user;
+            $previousBalance = $user->coins ?? 0;
+            $newBalance = $previousBalance + $totalCoins;
+
+            $user->update(['coins' => $newBalance]);
+
+            // Create coin transaction record
+            \App\Models\CoinTransaction::create([
+                'user_id' => $user->id,
+                'type' => 'purchase',
+                'amount' => $totalCoins,
+                'balance_after' => $newBalance,
+                'description' => "Pembelian koin melalui Midtrans - {$coinAmount} koin" . ($bonusCoins > 0 ? " (+{$bonusCoins} bonus)" : ""),
+                'metadata' => [
+                    'payment_id' => $payment->id,
+                    'purchased_coins' => $coinAmount,
+                    'bonus_coins' => $bonusCoins,
+                    'payment_method' => 'midtrans',
+                    'order_id' => $payment->midtrans_order_id
+                ]
+            ]);
+
+            Log::info('Coins added to user account', [
+                'payment_id' => $payment->id,
+                'user_id' => $user->id,
+                'previous_balance' => $previousBalance,
+                'coins_added' => $totalCoins,
+                'new_balance' => $newBalance,
+                'purchased_coins' => $coinAmount,
+                'bonus_coins' => $bonusCoins
+            ]);
+        }
     }
 
     /**

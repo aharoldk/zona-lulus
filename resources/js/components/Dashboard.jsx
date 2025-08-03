@@ -675,12 +675,21 @@ export default function Dashboard() {
 
                     <Space size={isMobile ? "small" : "middle"}>
                         {/* Coins Display - New Feature */}
-                        <div style={{display: 'flex', alignItems: 'center'}}>
+                        <Button
+                            type="text"
+                            onClick={() => setSelectedKey('topup')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                height: 'auto',
+                                padding: '4px 8px'
+                            }}
+                        >
                             <DollarCircleOutlined style={{fontSize: '18px', color: '#faad14', marginRight: '8px'}}/>
-                            <Text style={{margin: 0, fontWeight: '500'}} onClick={() => setSelectedKey('topup')}>
+                            <Text style={{margin: 0, fontSize: isMobile ? '14px' : '16px', fontWeight: '500'}}>
                                 {user?.coins} Koin
                             </Text>
-                        </div>
+                        </Button>
 
                         {/* User Menu */}
                         <Dropdown

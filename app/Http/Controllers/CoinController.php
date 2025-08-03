@@ -2,170 +2,211 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CoinTransaction;
-use App\Models\User;
+use App\Models\CoinPackage;
+use App\Services\MidtransService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class CoinController extends Controller
 {
-    public function getBalance()
+    protected $midtransService;
+
+    public function __construct(MidtransService $midtransService)
     {
-        $user = Auth::user();
-        return response()->json([
-            'coins' => $user->coins,
-            'transactions' => $user->coinTransactions()
-                ->latest()
-                ->take(10)
-                ->get()
-        ]);
+        $this->midtransService = $midtransService;
     }
 
-    public function purchaseCoins(Request $request)
+    /**
+     * Get available coin packages
+     */
+    public function getPackages()
     {
-        $request->validate([
-            'package' => 'required|string|in:small,medium,large,premium',
-            'payment_method' => 'required|string|in:credit_card,bank_transfer,e_wallet'
-        ]);
-
-        $packages = [
-            'small' => ['coins' => 100, 'price' => 50000],
-            'medium' => ['coins' => 250, 'price' => 120000],
-            'large' => ['coins' => 500, 'price' => 230000],
-            'premium' => ['coins' => 1000, 'price' => 450000]
-        ];
-
-        $package = $packages[$request->package];
-        $user = Auth::user();
-
         try {
-            DB::beginTransaction();
-
-            // Create payment record
-            $payment = $user->payments()->create([
-                'amount' => $package['price'],
-                'status' => 'pending',
-                'payment_method' => $request->payment_method,
-                'metadata' => [
-                    'type' => 'coin_purchase',
-                    'package' => $request->package,
-                    'coins' => $package['coins']
-                ]
-            ]);
-
-            // For demo purposes, we'll simulate successful payment
-            // In production, integrate with actual payment gateway
-            $payment->update(['status' => 'completed']);
-
-            // Add coins to user account
-            $user->addCoins(
-                $package['coins'],
-                "Purchase {$request->package} coin package",
-                ['payment_id' => $payment->id, 'package' => $request->package]
-            );
-
-            DB::commit();
+            $packages = CoinPackage::active()->ordered()->get();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Coins purchased successfully',
-                'coins_added' => $package['coins'],
-                'new_balance' => $user->fresh()->coins,
-                'payment_id' => $payment->id
+                'data' => $packages->map(function ($package) {
+                    return [
+                        'id' => $package->id,
+                        'name' => $package->name,
+                        'description' => $package->description,
+                        'coins' => $package->coins,
+                        'bonus' => $package->bonus,
+                        'price' => $package->price,
+                        'total_coins' => $package->total_coins,
+                        'popular' => $package->popular
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get coin packages error', [
+                'error' => $e->getMessage()
             ]);
 
-        } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to purchase coins: ' . $e->getMessage()
+                'message' => 'Gagal mengambil paket koin'
             ], 500);
         }
     }
 
-    public function spendCoins(Request $request)
+    /**
+     * Create coin purchase
+     */
+    public function purchase(Request $request)
     {
-        $request->validate([
-            'amount' => 'required|integer|min:1',
-            'description' => 'required|string',
-            'metadata' => 'nullable|array'
-        ]);
-
-        $user = Auth::user();
-
         try {
-            $transaction = $user->spendCoins(
-                $request->amount,
-                $request->description,
-                $request->metadata ?? []
+            $validator = Validator::make($request->all(), [
+                'package_id' => 'required|string'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data tidak valid',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = Auth::user();
+            $packageId = $request->package_id;
+            $coinPackage = CoinPackage::where('id', $packageId)
+                ->where('active', true)
+                ->first();
+
+            if (!$coinPackage) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Paket tidak ditemukan atau tidak aktif'
+                ], 404);
+            }
+
+            $package = [
+                'coins' => $coinPackage->coins,
+                'price' => $coinPackage->price,
+                'bonus' => $coinPackage->bonus
+            ];
+
+            // Check if Midtrans is configured
+            if (!$this->midtransService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Layanan pembayaran belum dikonfigurasi'
+                ], 500);
+            }
+
+            // Create payment record
+            $payment = $this->midtransService->createCoinPayment(
+                $user,
+                $package['coins'],
+                $package['price'],
+                $package
             );
+
+            // Create Snap token
+            $snapToken = $this->midtransService->createCoinSnapToken($payment);
+
+            if (!$snapToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal membuat token pembayaran'
+                ], 500);
+            }
+
+            Log::info('Coin purchase initiated', [
+                'user_id' => $user->id,
+                'payment_id' => $payment->id,
+                'package_id' => $packageId,
+                'coins' => $package['coins'],
+                'price' => $package['price']
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Coins spent successfully',
-                'coins_spent' => $request->amount,
-                'new_balance' => $user->fresh()->coins,
-                'transaction_id' => $transaction->id
+                'data' => [
+                    'payment_id' => $payment->id,
+                    'snap_token' => $snapToken,
+                    'order_id' => $payment->midtrans_order_id,
+                    'amount' => $payment->amount,
+                    'coins' => $package['coins'],
+                    'bonus_coins' => $package['bonus'],
+                    'total_coins' => $package['coins'] + $package['bonus']
+                ]
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Coin purchase error', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+                'message' => 'Terjadi kesalahan saat memproses pembelian'
+            ], 500);
         }
     }
 
-    public function getTransactionHistory(Request $request)
+    /**
+     * Get user's coin transaction history
+     */
+    public function getTransactionHistory()
     {
-        $user = Auth::user();
-        $perPage = $request->get('per_page', 15);
+        try {
+            $user = Auth::user();
 
-        $transactions = $user->coinTransactions()
-            ->latest()
-            ->paginate($perPage);
+            $transactions = $user->coinTransactions()
+                ->orderBy('created_at', 'desc')
+                ->paginate(20);
 
-        return response()->json($transactions);
+            return response()->json([
+                'success' => true,
+                'data' => $transactions
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get transaction history error', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil riwayat transaksi'
+            ], 500);
+        }
     }
 
-    public function getCoinPackages()
+    /**
+     * Get current user's coin balance
+     */
+    public function getBalance()
     {
-        return response()->json([
-            'packages' => [
-                [
-                    'id' => 'small',
-                    'name' => 'Paket Kecil',
-                    'coins' => 100,
-                    'price' => 50000,
-                    'bonus' => 0,
-                    'popular' => false
-                ],
-                [
-                    'id' => 'medium',
-                    'name' => 'Paket Sedang',
-                    'coins' => 250,
-                    'price' => 120000,
-                    'bonus' => 20,
-                    'popular' => true
-                ],
-                [
-                    'id' => 'large',
-                    'name' => 'Paket Besar',
-                    'coins' => 500,
-                    'price' => 230000,
-                    'bonus' => 50,
-                    'popular' => false
-                ],
-                [
-                    'id' => 'premium',
-                    'name' => 'Paket Premium',
-                    'coins' => 1000,
-                    'price' => 450000,
-                    'bonus' => 100,
-                    'popular' => false
+        try {
+            $user = Auth::user();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'balance' => $user->coins ?? 0,
+                    'user_name' => $user->name
                 ]
-            ]
-        ]);
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get coin balance error', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil saldo koin'
+            ], 500);
+        }
     }
 }
