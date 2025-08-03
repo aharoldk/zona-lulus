@@ -13,13 +13,14 @@ class Payment extends Model
     protected $fillable = [
         'user_id',
         'course_id',
+        'test_id',
         'invoice_number',
         'amount',
         'payment_method',
         'status',
-        'xendit_invoice_id',
-        'xendit_payment_id',
-        'xendit_refund_id',
+        'order_id',
+        'transaction_id',
+        'transaction_status',
         'payment_channel',
         'paid_at',
         'expires_at',
@@ -60,6 +61,11 @@ class Payment extends Model
     public function course()
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function test()
+    {
+        return $this->belongsTo(Test::class);
     }
 
     public function refundProcessor()
@@ -107,6 +113,11 @@ class Payment extends Model
     public function scopeToday($query)
     {
         return $query->whereDate('created_at', today());
+    }
+
+    public function scopeForTest($query, $testId)
+    {
+        return $query->where('test_id', $testId);
     }
 
     // Accessors & Mutators

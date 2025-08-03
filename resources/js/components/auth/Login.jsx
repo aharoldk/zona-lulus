@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, Alert, Checkbox, Typography, Row, Col } from 'antd';
@@ -11,12 +11,19 @@ export default function Login() {
     const [form] = Form.useForm();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
     // Get the intended destination from location state or default to dashboard
     const from = location.state?.from?.pathname || ROUTES.DASHBOARD;
+
+    // Redirect if user is already authenticated
+    useEffect(() => {
+        if (user) {
+            navigate(ROUTES.DASHBOARD, { replace: true });
+        }
+    }, [user, navigate]);
 
     const handleSubmit = async (values) => {
         setLoading(true);

@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules;
 
 class AuthController extends Controller
 {
@@ -16,9 +15,9 @@ class AuthController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
-                'phone' => 'required|string|min:10|max:15|unique:users',
+                'phone' => 'required|string|min:8|max:15|unique:users',
                 'password' => 'required|string|min:8|confirmed',
-                'date_of_birth' => 'required|date|before:-17 years|after:-35 years',
+                'birth_date' => 'required|date|before:-17 years|after:-35 years',
                 'education' => 'nullable|in:sma,d3,s1,s2',
                 'newsletter' => 'boolean'
             ], [
@@ -29,16 +28,16 @@ class AuthController extends Controller
                 'email.email' => 'Format email tidak valid.',
                 'email.unique' => 'Email sudah terdaftar.',
                 'phone.required' => 'Nomor HP wajib diisi.',
-                'phone.min' => 'Nomor HP minimal 10 digit.',
+                'phone.min' => 'Nomor HP minimal 8 digit.',
                 'phone.max' => 'Nomor HP maksimal 15 digit.',
                 'phone.unique' => 'Nomor HP sudah terdaftar.',
                 'password.required' => 'Password wajib diisi.',
                 'password.min' => 'Password minimal 8 karakter.',
                 'password.confirmed' => 'Konfirmasi password tidak cocok.',
-                'date_of_birth.required' => 'Tanggal lahir wajib diisi.',
-                'date_of_birth.date' => 'Format tanggal lahir tidak valid.',
-                'date_of_birth.before' => 'Umur minimal 17 tahun.',
-                'date_of_birth.after' => 'Umur maksimal 35 tahun.',
+                'birth_date.required' => 'Tanggal lahir wajib diisi.',
+                'birth_date.date' => 'Format tanggal lahir tidak valid.',
+                'birth_date.before' => 'Umur minimal 17 tahun.',
+                'birth_date.after' => 'Umur maksimal 35 tahun.',
                 'education.in' => 'Pilihan pendidikan tidak valid.',
                 'newsletter.boolean' => 'Pilihan newsletter tidak valid.'
             ]);
@@ -56,7 +55,7 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => Hash::make($request->password),
-                'birth_date' => $request->date_of_birth,
+                'birth_date' => $request->birth_date,
                 'education' => $request->education
             ]);
 
@@ -118,7 +117,11 @@ class AuthController extends Controller
 
     public function checkEmail(Request $request)
     {
-        $email = $request->query('email');
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $email = $request->input('email');
         $exists = User::where('email', $email)->exists();
 
         return response()->json([
@@ -128,7 +131,11 @@ class AuthController extends Controller
 
     public function checkPhone(Request $request)
     {
-        $phone = $request->query('phone');
+        $request->validate([
+            'phone' => 'required|string'
+        ]);
+
+        $phone = $request->input('phone');
         $exists = User::where('phone', $phone)->exists();
 
         return response()->json([

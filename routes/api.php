@@ -12,11 +12,20 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\StudyController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\MidtransWebhookController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::get('/check-email', [AuthController::class, 'checkEmail']);
-Route::get('/check-phone', [AuthController::class, 'checkPhone']);
+Route::post('/check-email', [AuthController::class, 'checkEmail']);
+Route::post('/check-phone', [AuthController::class, 'checkPhone']);
+
+// Midtrans webhook (no authentication required)
+Route::post('/midtrans/webhook', [MidtransWebhookController::class, 'handleWebhook']);
+Route::post('/midtrans/test-webhook', [MidtransWebhookController::class, 'testWebhook']);
+
+// Payment finish redirect (no authentication required)
+Route::get('/payments/{payment}/finish', [PaymentController::class, 'finish'])->name('payment.finish');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -77,6 +86,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Analytics route
     Route::get('/analytics', [AnalyticsController::class, 'index']);
+
+    // Payment routes (authenticated)
+    Route::prefix('payments')->group(function () {
+        Route::get('/history', [PaymentController::class, 'history']);
+        Route::get('/stats', [PaymentController::class, 'stats']);
+        Route::get('/{payment}/status', [PaymentController::class, 'getPaymentStatus']);
+        Route::post('/{payment}/cancel', [PaymentController::class, 'cancel']);
+    });
+
+    // Module purchase routes
+    Route::post('/modules/{module}/purchase', [PaymentController::class, 'purchaseModule']);
+
+    // Course purchase routes
+    Route::post('/courses/{course}/purchase', [PaymentController::class, 'purchaseCourse']);
+
+    // Test/Tryout purchase routes
+    Route::post('/tests/{test}/purchase', [PaymentController::class, 'purchaseTest']);
 });
 
 // Admin routes

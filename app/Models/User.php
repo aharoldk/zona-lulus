@@ -23,31 +23,9 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
-        'birth_date', // Use actual database column name
-        'education',
-        'target',
-        'experience_level',
-        'study_time',
-        'newsletter_subscription',
-        'avatar',
-        'registration_completed_at',
+        'birth_date',
+        'settings',
         'last_login_at',
-        // Settings fields
-        'notifications_email',
-        'notifications_push',
-        'notifications_sms',
-        'notifications_study_reminders',
-        'notifications_achievement_alerts',
-        'notifications_weekly_reports',
-        'privacy_profile_visibility',
-        'privacy_show_progress',
-        'privacy_show_achievements',
-        'privacy_allow_messages',
-        'preferences_language',
-        'preferences_timezone',
-        'preferences_theme',
-        'preferences_auto_save',
-        'preferences_sound_effects'
     ];
 
     /**
@@ -70,14 +48,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'birth_date' => 'date', // Use actual database column name
-            'two_factor_enabled' => 'boolean',
-            'login_alerts' => 'boolean',
-            'email_course_updates' => 'boolean',
-            'email_study_reminders' => 'boolean',
-            'email_tryout_results' => 'boolean',
-            'push_deadline_reminders' => 'boolean',
-            'push_achievements' => 'boolean',
+            'birth_date' => 'date',
+            'settings' => 'array',
+            'last_login_at' => 'datetime',
         ];
     }
 
@@ -117,23 +90,7 @@ class User extends Authenticatable
         return $this->hasMany(PaymentStatusLog::class, 'changed_by');
     }
 
-    // Admin-related methods
-    public function isAdmin()
-    {
-        return $this->is_admin || $this->role === 'admin';
-    }
-
-    public function canManagePayments()
-    {
-        return $this->isAdmin() || in_array($this->role, ['admin', 'finance']);
-    }
-
     // Scopes
-    public function scopeAdmins($query)
-    {
-        return $query->where('is_admin', true)->orWhere('role', 'admin');
-    }
-
     public function scopeActiveUsers($query)
     {
         return $query->where('last_login_at', '>=', now()->subDays(30));

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, {useState, useEffect} from 'react';
+import {useAuth} from '../context/AuthContext';
 import {
     Layout,
     Menu,
     Button,
-    Avatar,
     Dropdown,
     Typography,
     Card,
@@ -14,8 +13,7 @@ import {
     Progress,
     List,
     Badge,
-    Space,
-    Divider
+    Space
 } from 'antd';
 import {
     DashboardOutlined,
@@ -23,17 +21,11 @@ import {
     FileTextOutlined,
     TrophyOutlined,
     SettingOutlined,
-    UserOutlined,
     LogoutOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    BellOutlined,
-    PlayCircleOutlined,
-    CheckCircleOutlined,
     ClockCircleOutlined,
-    StarOutlined,
-    LineChartOutlined,
-    RobotOutlined
+    StarOutlined
 } from '@ant-design/icons';
 
 // Import all screen components
@@ -49,11 +41,11 @@ import AnalyticsDashboard from './analytics/AnalyticsDashboard';
 import StudyTracker from './study/StudyTracker';
 import AIStudyAssistant from './ai/AIStudyAssistant';
 
-const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
+const {Header, Sider, Content} = Layout;
+const {Title, Text} = Typography;
 
 export default function Dashboard() {
-    const { user, logout } = useAuth();
+    const {user, logout} = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const [selectedKey, setSelectedKey] = useState('1');
     const [isMobile, setIsMobile] = useState(false);
@@ -77,7 +69,7 @@ export default function Dashboard() {
     };
 
     // Handle user menu clicks
-    const handleUserMenuClick = ({ key }) => {
+    const handleUserMenuClick = ({key}) => {
         switch (key) {
             case 'profile':
                 setSelectedKey('profile');
@@ -110,35 +102,35 @@ export default function Dashboard() {
     const menuItems = [
         {
             key: '1',
-            icon: <DashboardOutlined />,
+            icon: <DashboardOutlined/>,
             label: 'Dashboard',
         },
-        {
-            key: '2',
-            icon: <BookOutlined />,
-            label: 'Kursus',
-            children: [
-                {
-                    key: '2-1',
-                    label: 'Semua Kursus',
-                },
-                {
-                    key: '2-2',
-                    label: 'Kursus Saya',
-                },
-                {
-                    key: '2-3',
-                    label: 'Favorit',
-                },
-                {
-                    key: '2-4',
-                    label: 'Riwayat Belajar',
-                },
-            ],
-        },
+        // {
+        //     key: '2',
+        //     icon: <BookOutlined />,
+        //     label: 'Kursus',
+        //     children: [
+        //         {
+        //             key: '2-1',
+        //             label: 'Semua Kursus',
+        //         },
+        //         {
+        //             key: '2-2',
+        //             label: 'Kursus Saya',
+        //         },
+        //         {
+        //             key: '2-3',
+        //             label: 'Favorit',
+        //         },
+        //         {
+        //             key: '2-4',
+        //             label: 'Riwayat Belajar',
+        //         },
+        //     ],
+        // },
         {
             key: '3',
-            icon: <FileTextOutlined />,
+            icon: <FileTextOutlined/>,
             label: 'Tryout & Simulasi',
             children: [
                 {
@@ -167,32 +159,32 @@ export default function Dashboard() {
                 },
             ],
         },
-        {
-            key: '4',
-            icon: <PlayCircleOutlined />,
-            label: 'Latihan Soal',
-            children: [
-                {
-                    key: '4-1',
-                    label: 'Bank Soal',
-                },
-                {
-                    key: '4-2',
-                    label: 'Drill Soal',
-                },
-                {
-                    key: '4-3',
-                    label: 'Latihan Harian',
-                },
-                {
-                    key: '4-4',
-                    label: 'Challenge Mode',
-                },
-            ],
-        },
+        // {
+        //     key: '4',
+        //     icon: <PlayCircleOutlined />,
+        //     label: 'Latihan Soal',
+        //     children: [
+        //         {
+        //             key: '4-1',
+        //             label: 'Bank Soal',
+        //         },
+        //         {
+        //             key: '4-2',
+        //             label: 'Drill Soal',
+        //         },
+        //         {
+        //             key: '4-3',
+        //             label: 'Latihan Harian',
+        //         },
+        //         {
+        //             key: '4-4',
+        //             label: 'Challenge Mode',
+        //         },
+        //     ],
+        // },
         {
             key: '5',
-            icon: <TrophyOutlined />,
+            icon: <TrophyOutlined/>,
             label: 'Prestasi',
             children: [
                 {
@@ -213,121 +205,121 @@ export default function Dashboard() {
                 },
             ],
         },
-        {
-            key: '6',
-            icon: <StarOutlined />,
-            label: 'Pembahasan',
-            children: [
-                {
-                    key: '6-1',
-                    label: 'Video Pembahasan',
-                },
-                {
-                    key: '6-2',
-                    label: 'Pembahasan Tertulis',
-                },
-                {
-                    key: '6-3',
-                    label: 'Diskusi & Forum',
-                },
-            ],
-        },
-        {
-            key: '7',
-            icon: <CheckCircleOutlined />,
-            label: 'Evaluasi',
-            children: [
-                {
-                    key: '7-1',
-                    label: 'Analisis Performa',
-                },
-                {
-                    key: '7-2',
-                    label: 'Rekomendasi Belajar',
-                },
-                {
-                    key: '7-3',
-                    label: 'Target & Goal',
-                },
-                {
-                    key: '7-4',
-                    label: 'Laporan Kemajuan',
-                },
-            ],
-        },
-        {
-            key: '8',
-            icon: <ClockCircleOutlined />,
-            label: 'Jadwal',
-            children: [
-                {
-                    key: '8-1',
-                    label: 'Jadwal Belajar',
-                },
-                {
-                    key: '8-2',
-                    label: 'Reminder',
-                },
-                {
-                    key: '8-3',
-                    label: 'Live Session',
-                },
-                {
-                    key: '8-4',
-                    label: 'Kalender Ujian',
-                },
-            ],
-        },
-        {
-            key: '9',
-            icon: <LineChartOutlined />,
-            label: 'Analytics',
-        },
-        {
-            key: '10',
-            icon: <ClockCircleOutlined />,
-            label: 'Study Tracker',
-        },
-        {
-            key: '11',
-            icon: <RobotOutlined />,
-            label: 'AI Assistant',
-        },
+        // {
+        //     key: '6',
+        //     icon: <StarOutlined />,
+        //     label: 'Pembahasan',
+        //     children: [
+        //         {
+        //             key: '6-1',
+        //             label: 'Video Pembahasan',
+        //         },
+        //         {
+        //             key: '6-2',
+        //             label: 'Pembahasan Tertulis',
+        //         },
+        //         {
+        //             key: '6-3',
+        //             label: 'Diskusi & Forum',
+        //         },
+        //     ],
+        // },
+        // {
+        //     key: '7',
+        //     icon: <CheckCircleOutlined />,
+        //     label: 'Evaluasi',
+        //     children: [
+        //         {
+        //             key: '7-1',
+        //             label: 'Analisis Performa',
+        //         },
+        //         {
+        //             key: '7-2',
+        //             label: 'Rekomendasi Belajar',
+        //         },
+        //         {
+        //             key: '7-3',
+        //             label: 'Target & Goal',
+        //         },
+        //         {
+        //             key: '7-4',
+        //             label: 'Laporan Kemajuan',
+        //         },
+        //     ],
+        // },
+        // {
+        //     key: '8',
+        //     icon: <ClockCircleOutlined />,
+        //     label: 'Jadwal',
+        //     children: [
+        //         {
+        //             key: '8-1',
+        //             label: 'Jadwal Belajar',
+        //         },
+        //         {
+        //             key: '8-2',
+        //             label: 'Reminder',
+        //         },
+        //         {
+        //             key: '8-3',
+        //             label: 'Live Session',
+        //         },
+        //         {
+        //             key: '8-4',
+        //             label: 'Kalender Ujian',
+        //         },
+        //     ],
+        // },
+        // {
+        //     key: '9',
+        //     icon: <LineChartOutlined />,
+        //     label: 'Analytics',
+        // },
+        // {
+        //     key: '10',
+        //     icon: <ClockCircleOutlined />,
+        //     label: 'Study Tracker',
+        // },
+        // {
+        //     key: '11',
+        //     icon: <RobotOutlined />,
+        //     label: 'AI Assistant',
+        // },
     ];
 
     // User dropdown menu
     const userMenuItems = [
-        {
-            key: 'profile',
-            icon: <UserOutlined />,
-            label: 'Profil Saya',
-        },
-        {
-            key: 'notifications',
-            icon: <BellOutlined />,
-            label: 'Notifikasi',
-        },
-        {
-            key: 'achievements',
-            icon: <TrophyOutlined />,
-            label: 'Prestasi Saya',
-        },
-        {
-            key: 'schedule',
-            icon: <ClockCircleOutlined />,
-            label: 'Jadwal Belajar',
-        },
-        {
-            type: 'divider',
-        },
+        // {
+        //     key: 'profile',
+        //     icon: <UserOutlined />,
+        //     label: 'Profil Saya',
+        // },
+        // {
+        //     key: 'notifications',
+        //     icon: <BellOutlined />,
+        //     label: 'Notifikasi',
+        // },
+        // {
+        //     key: 'achievements',
+        //     icon: <TrophyOutlined />,
+        //     label: 'Prestasi Saya',
+        // },
+        // {
+        //     key: 'schedule',
+        //     icon: <ClockCircleOutlined />,
+        //     label: 'Jadwal Belajar',
+        // },
+        // {
+        //     type: 'divider',
+        // },
         {
             key: 'settings',
-            icon: <SettingOutlined />,
+            icon: <SettingOutlined/>,
             label: 'Pengaturan Akun',
         },
         {
             key: 'help',
-            icon: <StarOutlined />,
+            icon: <StarOutlined/>,
             label: 'Bantuan & Dukungan',
         },
         {
@@ -335,7 +327,7 @@ export default function Dashboard() {
         },
         {
             key: 'logout',
-            icon: <LogoutOutlined />,
+            icon: <LogoutOutlined/>,
             label: 'Logout',
             danger: true,
         },
@@ -343,10 +335,10 @@ export default function Dashboard() {
 
     // Sample data for dashboard content
     const stats = [
-        { title: 'Kursus Aktif', value: 3, icon: <BookOutlined style={{ color: '#1890ff' }} /> },
-        { title: 'Tes Diselesaikan', value: 12, icon: <FileTextOutlined style={{ color: '#52c41a' }} /> },
-        { title: 'Prestasi', value: 8, icon: <TrophyOutlined style={{ color: '#faad14' }} /> },
-        { title: 'Jam Belajar', value: 45, suffix: 'jam', icon: <ClockCircleOutlined style={{ color: '#722ed1' }} /> },
+        {title: 'Kursus Aktif', value: 3, icon: <BookOutlined style={{color: '#1890ff'}}/>},
+        {title: 'Tes Diselesaikan', value: 12, icon: <FileTextOutlined style={{color: '#52c41a'}}/>},
+        {title: 'Prestasi', value: 8, icon: <TrophyOutlined style={{color: '#faad14'}}/>},
+        {title: 'Jam Belajar', value: 45, suffix: 'jam', icon: <ClockCircleOutlined style={{color: '#722ed1'}}/>},
     ];
 
     const recentActivities = [
@@ -375,12 +367,12 @@ export default function Dashboard() {
             case '1':
                 return (
                     <div>
-                        <Title level={2} style={{ marginBottom: '24px', fontSize: isMobile ? '20px' : '24px' }}>
+                        <Title level={2} style={{marginBottom: '24px', fontSize: isMobile ? '20px' : '24px'}}>
                             Selamat datang, {user?.name}! 👋
                         </Title>
 
                         {/* Statistics Cards - Mobile Responsive */}
-                        <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+                        <Row gutter={[16, 16]} style={{marginBottom: '24px'}}>
                             {stats.map((stat, index) => (
                                 <Col xs={12} sm={12} md={6} key={index}>
                                     <Card size={isMobile ? "small" : "default"}>
@@ -407,18 +399,18 @@ export default function Dashboard() {
                                     extra={<Text type="secondary">Minggu ini</Text>}
                                     size={isMobile ? "small" : "default"}
                                 >
-                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                    <Space direction="vertical" style={{width: '100%'}}>
                                         <div>
                                             <Text>Matematika Dasar</Text>
-                                            <Progress percent={85} status="active" />
+                                            <Progress percent={85} status="active"/>
                                         </div>
                                         <div>
                                             <Text>Bahasa Indonesia</Text>
-                                            <Progress percent={60} status="active" />
+                                            <Progress percent={60} status="active"/>
                                         </div>
                                         <div>
                                             <Text>Pengetahuan Umum</Text>
-                                            <Progress percent={30} />
+                                            <Progress percent={30}/>
                                         </div>
                                     </Space>
                                 </Card>
@@ -440,18 +432,20 @@ export default function Dashboard() {
                                                         <Badge
                                                             status={
                                                                 item.status === 'completed' ? 'success' :
-                                                                item.status === 'in-progress' ? 'processing' : 'warning'
+                                                                    item.status === 'in-progress' ? 'processing' : 'warning'
                                                             }
                                                         />
                                                     }
-                                                    title={<span style={{ fontSize: isMobile ? '14px' : '16px' }}>{item.title}</span>}
+                                                    title={<span
+                                                        style={{fontSize: isMobile ? '14px' : '16px'}}>{item.title}</span>}
                                                     description={
                                                         <div>
-                                                            <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                                                            <Text type="secondary"
+                                                                  style={{fontSize: isMobile ? '12px' : '14px'}}>
                                                                 {item.description}
                                                             </Text>
-                                                            <br />
-                                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                            <br/>
+                                                            <Text type="secondary" style={{fontSize: '12px'}}>
                                                                 {item.time}
                                                             </Text>
                                                         </div>
@@ -468,13 +462,13 @@ export default function Dashboard() {
 
             // Course sections
             case '2-1':
-                return <AllCourses />;
+                return <AllCourses/>;
             case '2-2':
-                return <MyCourses />;
+                return <MyCourses/>;
             case '2-3':
             case '2-4':
                 return (
-                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <div style={{textAlign: 'center', padding: '50px'}}>
                         <Title level={3}>Fitur ini akan segera hadir!</Title>
                         <Text type="secondary">
                             Kami sedang mengembangkan fitur ini untuk memberikan pengalaman belajar yang lebih baik.
@@ -484,14 +478,14 @@ export default function Dashboard() {
 
             // Tryout sections
             case '3-1':
-                return <Tryout />;
+                return <Tryout/>;
             case '3-2':
             case '3-3':
             case '3-4':
             case '3-5':
             case '3-6':
                 return (
-                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <div style={{textAlign: 'center', padding: '50px'}}>
                         <Title level={3}>Fitur ini akan segera hadir!</Title>
                         <Text type="secondary">
                             Kami sedang mengembangkan fitur ini untuk memberikan pengalaman belajar yang lebih baik.
@@ -501,12 +495,12 @@ export default function Dashboard() {
 
             // Practice sections
             case '4-1':
-                return <QuestionBank />;
+                return <QuestionBank/>;
             case '4-2':
             case '4-3':
             case '4-4':
                 return (
-                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <div style={{textAlign: 'center', padding: '50px'}}>
                         <Title level={3}>Fitur ini akan segera hadir!</Title>
                         <Text type="secondary">
                             Kami sedang mengembangkan fitur ini untuk memberikan pengalaman belajar yang lebih baik.
@@ -520,14 +514,14 @@ export default function Dashboard() {
             case '5-2':
             case '5-3':
             case '5-4':
-                return <Achievements />;
+                return <Achievements/>;
 
             // Discussion sections
             case '6-1':
             case '6-2':
             case '6-3':
                 return (
-                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <div style={{textAlign: 'center', padding: '50px'}}>
                         <Title level={3}>Fitur ini akan segera hadir!</Title>
                         <Text type="secondary">
                             Kami sedang mengembangkan fitur ini untuk memberikan pengalaman belajar yang lebih baik.
@@ -541,7 +535,7 @@ export default function Dashboard() {
             case '7-3':
             case '7-4':
                 return (
-                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <div style={{textAlign: 'center', padding: '50px'}}>
                         <Title level={3}>Fitur ini akan segera hadir!</Title>
                         <Text type="secondary">
                             Kami sedang mengembangkan fitur ini untuk memberikan pengalaman belajar yang lebih baik.
@@ -554,27 +548,27 @@ export default function Dashboard() {
             case '8-2':
             case '8-3':
             case '8-4':
-                return <StudySchedule />;
+                return <StudySchedule/>;
 
             // Analytics, Study Tracker, AI Assistant sections
             case '9':
-                return <AnalyticsDashboard />;
+                return <AnalyticsDashboard/>;
             case '10':
-                return <StudyTracker />;
+                return <StudyTracker/>;
             case '11':
-                return <AIStudyAssistant />;
+                return <AIStudyAssistant/>;
 
             // User menu sections (accessible from user dropdown)
             case 'profile':
-                return <Profile />;
+                return <Profile/>;
             case 'notifications':
-                return <Notifications />;
+                return <Notifications/>;
             case 'settings':
-                return <Profile />; // For now, settings redirects to profile
+                return <Profile/>; // For now, settings redirects to profile
 
             default:
                 return (
-                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <div style={{textAlign: 'center', padding: '50px'}}>
                         <Title level={3}>Fitur ini akan segera hadir!</Title>
                         <Text type="secondary">
                             Kami sedang mengembangkan fitur ini untuk memberikan pengalaman belajar yang lebih baik.
@@ -585,7 +579,7 @@ export default function Dashboard() {
     };
 
     return (
-        <Layout style={{ minHeight: '100vh' }}>
+        <Layout style={{minHeight: '100vh'}}>
             {/* Sidebar */}
             <Sider
                 trigger={null}
@@ -614,11 +608,12 @@ export default function Dashboard() {
                     borderBottom: '1px solid #f0f0f0'
                 }}>
                     {collapsed && !isMobile ? (
-                        <img src="/logo-zona-lulus.png" alt="Logo" width="32" />
+                        <img src="/logo-zona-lulus.png" alt="Logo" width="32"/>
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <img src="/logo-zona-lulus.png" alt="Logo" width="32" style={{ marginRight: '12px' }} />
-                            <Title level={4} style={{ margin: 0, color: '#2c3e50', fontSize: isMobile ? '16px' : '18px' }}>
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <img src="/logo-zona-lulus.png" alt="Logo" width="32" style={{marginRight: '12px'}}/>
+                            <Title level={4}
+                                   style={{margin: 0, color: '#2c3e50', fontSize: isMobile ? '16px' : '18px'}}>
                                 Zona Lulus
                             </Title>
                         </div>
@@ -630,8 +625,8 @@ export default function Dashboard() {
                     mode="inline"
                     selectedKeys={[selectedKey]}
                     items={menuItems}
-                    style={{ border: 'none', marginTop: '16px' }}
-                    onClick={({ key }) => {
+                    style={{border: 'none', marginTop: '16px'}}
+                    onClick={({key}) => {
                         setSelectedKey(key);
                         if (isMobile) {
                             setCollapsed(true);
@@ -657,7 +652,7 @@ export default function Dashboard() {
             )}
 
             {/* Main Layout */}
-            <Layout style={{ marginLeft: 0, transition: 'all 0.2s' }}>
+            <Layout style={{marginLeft: 0, transition: 'all 0.2s'}}>
                 {/* Header */}
                 <Header style={{
                     padding: isMobile ? '0 12px' : '0 16px',
@@ -669,27 +664,27 @@ export default function Dashboard() {
                 }}>
                     <Button
                         type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        icon={collapsed ? <MenuUnfoldOutlined/> : <MenuFoldOutlined/>}
                         onClick={() => setCollapsed(!collapsed)}
-                        style={{ fontSize: '16px', width: 64, height: 64 }}
+                        style={{fontSize: '16px', width: 64, height: 64}}
                     />
 
                     <Space size={isMobile ? "small" : "middle"}>
                         {/* Notifications */}
-                        <Badge count={3} size="small">
-                            <Button type="text" icon={<BellOutlined />} shape="circle" size={isMobile ? "small" : "default"} />
-                        </Badge>
+                        {/*<Badge count={3} size="small">*/}
+                        {/*    <Button type="text" icon={<BellOutlined />} shape="circle" size={isMobile ? "small" : "default"} />*/}
+                        {/*</Badge>*/}
 
                         {/* User Menu */}
                         <Dropdown
-                            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+                            menu={{items: userMenuItems, onClick: handleUserMenuClick}}
                             placement="bottomRight"
                             trigger={['click']}
                         >
-                            <Button type="text" style={{ height: 'auto', padding: '4px 8px' }}>
+                            <Button type="text" style={{height: 'auto', padding: '4px 8px'}}>
                                 <Space size="small">
-                                    <Avatar size={isMobile ? "small" : "default"} icon={<UserOutlined />} />
-                                    {!isMobile && <span style={{ fontWeight: '500' }}>{user?.name}</span>}
+                                    {/*{!isMobile && <span style={{fontWeight: '500'}}>Hi {user?.name}!</span>}*/}
+                                    <span style={{fontWeight: '500'}}>Hi, {user?.name}!</span>
                                 </Space>
                             </Button>
                         </Dropdown>

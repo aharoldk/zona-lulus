@@ -29,7 +29,7 @@ export default function Tryout() {
         try {
             setLoading(true);
             const response = await api.get('/tryouts', {
-                params: { category: 'tni' } // Filter for TNI tryouts
+                params: { category: 'tni' }
             });
 
             if (response.data.success) {

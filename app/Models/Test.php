@@ -46,6 +46,75 @@ class Test extends Model
         return $this->hasMany(TestAttempt::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'test_id');
+    }
+
+    public function userAccess()
+    {
+        return $this->belongsToMany(User::class, 'test_access')
+                    ->withPivot(['purchased_at', 'expires_at', 'payment_id'])
+                    ->withTimestamps();
+    }
+
+    public function isAccessibleBy(User $user)
+    {
+        // Free tests are always accessible
+        if ($this->is_free) {
+            return true;
+        }
+
+        // Check if user has purchased access
+        return $this->userAccess()
+                    ->where('user_id', $user->id)
+                    ->where(function($query) {
+                        $query->whereNull('expires_at')
+                              ->orWhere('expires_at', '>', now());
+                    })
+                    ->exists();
+    }
+
+    public function getPurchaseStatusFor(User $user)
+    {
+        if ($this->is_free) {
+            return 'free';
+        }
+
+        $access = $this->userAccess()
+                       ->where('user_id', $user->id)
+                       ->first();
+
+        if (!$access) {
+            return 'not_purchased';
+        }
+
+        if ($access->pivot->expires_at && $access->pivot->expires_at < now()) {
+            return 'expired';
+        }
+
+        return 'active';
+    }
+
+    public function canUserAttempt(User $user)
+    {
+        // Check if user has access to the test
+        if (!$this->isAccessibleBy($user)) {
+            return false;
+        }
+
+        // Check attempt limits
+        if ($this->attempts_allowed > 0) {
+            $userAttempts = $this->testAttempts()
+                                ->where('user_id', $user->id)
+                                ->count();
+
+            return $userAttempts < $this->attempts_allowed;
+        }
+
+        return true;
+    }
+
     public function getPriceFormattedAttribute()
     {
         return $this->is_free ? 'Gratis' : 'Rp ' . number_format($this->price, 0, ',', '.');
