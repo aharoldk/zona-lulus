@@ -25,7 +25,8 @@ import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     ClockCircleOutlined,
-    StarOutlined
+    StarOutlined,
+    DollarCircleOutlined
 } from '@ant-design/icons';
 
 // Import all screen components
@@ -40,6 +41,7 @@ import Notifications from './notifications/Notifications';
 import AnalyticsDashboard from './analytics/AnalyticsDashboard';
 import StudyTracker from './study/StudyTracker';
 import AIStudyAssistant from './ai/AIStudyAssistant';
+import TopUp from './coins/TopUp';
 
 const {Header, Sider, Content} = Layout;
 const {Title, Text} = Typography;
@@ -565,6 +567,8 @@ export default function Dashboard() {
                 return <Notifications/>;
             case 'settings':
                 return <Profile/>; // For now, settings redirects to profile
+            case 'topup':
+                return <TopUp/>;
 
             default:
                 return (
@@ -670,10 +674,13 @@ export default function Dashboard() {
                     />
 
                     <Space size={isMobile ? "small" : "middle"}>
-                        {/* Notifications */}
-                        {/*<Badge count={3} size="small">*/}
-                        {/*    <Button type="text" icon={<BellOutlined />} shape="circle" size={isMobile ? "small" : "default"} />*/}
-                        {/*</Badge>*/}
+                        {/* Coins Display - New Feature */}
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <DollarCircleOutlined style={{fontSize: '18px', color: '#faad14', marginRight: '8px'}}/>
+                            <Text style={{margin: 0, fontWeight: '500'}} onClick={() => setSelectedKey('topup')}>
+                                {user?.coins} Koin
+                            </Text>
+                        </div>
 
                         {/* User Menu */}
                         <Dropdown

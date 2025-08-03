@@ -14,6 +14,7 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\StudyController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\MidtransWebhookController;
+use App\Http\Controllers\CoinController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -103,6 +104,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Test/Tryout purchase routes
     Route::post('/tests/{test}/purchase', [PaymentController::class, 'purchaseTest']);
+
+    // Coin routes
+    Route::prefix('coins')->group(function () {
+        Route::get('/balance', [CoinController::class, 'getBalance']);
+        Route::get('/packages', [CoinController::class, 'getCoinPackages']);
+        Route::post('/purchase', [CoinController::class, 'purchaseCoins']);
+        Route::post('/spend', [CoinController::class, 'spendCoins']);
+        Route::get('/transactions', [CoinController::class, 'getTransactionHistory']);
+    });
 });
 
 // Admin routes

@@ -26,6 +26,7 @@ class User extends Authenticatable
         'birth_date',
         'settings',
         'last_login_at',
+        'coins',
     ];
 
     /**
@@ -90,9 +91,63 @@ class User extends Authenticatable
         return $this->hasMany(PaymentStatusLog::class, 'changed_by');
     }
 
+    public function coinTransactions()
+    {
+        return $this->hasMany(CoinTransaction::class);
+    }
+
     // Scopes
     public function scopeActiveUsers($query)
     {
         return $query->where('last_login_at', '>=', now()->subDays(30));
+    }
+
+    // Coin methods
+    public function addCoins(int $amount, string $description, array $metadata = [])
+    {
+        $this->increment('coins', $amount);
+
+        return $this->coinTransactions()->create([
+            'type' => 'purchase',
+            'amount' => $amount,
+            'balance_after' => $this->fresh()->coins,
+            'description' => $description,
+            'metadata' => $metadata,
+        ]);
+    }
+
+    public function spendCoins(int $amount, string $description, array $metadata = [])
+    {
+        if ($this->coins < $amount) {
+            throw new \Exception('Insufficient coins');
+        }
+
+        $this->decrement('coins', $amount);
+
+        return $this->coinTransactions()->create([
+            'type' => 'spend',
+            'amount' => -$amount,
+            'balance_after' => $this->fresh()->coins,
+            'description' => $description,
+            'metadata' => $metadata,
+        ]);
+    }
+
+    public function refundCoins(int $amount, string $description, array $metadata = [])
+    {
+        $this->increment('coins', $amount);
+
+        return $this->coinTransactions()->create([
+            'type' => 'refund',
+            'amount' => $amount,
+            'balance_after' => $this->fresh()->coins,
+            'description' => $description,
+            'metadata' => $metadata,
+        ]);
+    }
+
+    public function hasEnoughCoins(int $amount): bool
+    {
+        return $this->coins >= $amount;
     }
 }

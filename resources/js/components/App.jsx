@@ -6,6 +6,7 @@ import Login from './auth/Login';
 import Register from './auth/Register';
 import ForgotPassword from './auth/ForgotPassword';
 import Dashboard from './Dashboard';
+import CoinWallet from './coins/CoinWallet';
 import ProtectedRoute from './ProtectedRoute';
 import NotFound from './NotFound';
 
@@ -22,6 +23,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Dashboard />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/wallet"
+                    element={
+                        <ProtectedRoute>
+                            <CoinWallet />
                         </ProtectedRoute>
                     }
                 />
