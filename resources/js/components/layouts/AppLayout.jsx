@@ -155,7 +155,6 @@ export default function AppLayout({children}) {
         navigate(key);
     };
 
-    // User dropdown menu items
     const userMenuItems = [
         {
             key: 'profile',
@@ -309,7 +308,6 @@ export default function AppLayout({children}) {
                 </Content>
             </Layout>
 
-            {/* Mobile Overlay */}
             {isMobile && !collapsed && (
                 <div
                     style={{

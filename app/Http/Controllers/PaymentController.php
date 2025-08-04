@@ -5,19 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Module;
 use App\Models\Payment;
 use App\Models\Course;
-use App\Services\MidtransService;
+use App\Models\Test;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    protected $midtransService;
-
-    public function __construct(MidtransService $midtransService)
+    public function __construct()
     {
-        $this->midtransService = $midtransService;
-        $this->middleware('auth')->except(['webhook', 'finish']);
+        $this->middleware('auth:sanctum')->except(['finish']);
     }
 
     /**
@@ -51,35 +48,28 @@ class PaymentController extends Controller
             ->first();
 
         if ($existingPayment) {
-            $snapToken = $this->midtransService->createSnapToken($existingPayment);
-
-            if ($snapToken) {
-                return response()->json([
-                    'status' => 'success',
-                    'payment_id' => $existingPayment->id,
-                    'snap_token' => $snapToken,
-                    'amount' => $existingPayment->amount,
-                    'invoice_number' => $existingPayment->invoice_number
-                ]);
-            }
+            return response()->json([
+                'status' => 'success',
+                'payment_id' => $existingPayment->id,
+                'amount' => $existingPayment->amount,
+                'invoice_number' => $existingPayment->invoice_number
+            ]);
         }
 
         // Create new payment
         try {
-            $payment = $this->midtransService->createPayment($user, $module);
-            $snapToken = $this->midtransService->createSnapToken($payment);
-
-            if (!$snapToken) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to create payment token'
-                ], 500);
-            }
+            $payment = new Payment();
+            $payment->user_id = $user->id;
+            $payment->module_id = $module->id;
+            $payment->amount = $module->price;
+            $payment->status = 'pending';
+            $payment->invoice_number = 'INV-' . strtoupper(uniqid());
+            $payment->expires_at = now()->addMinutes(60);
+            $payment->save();
 
             return response()->json([
                 'status' => 'success',
                 'payment_id' => $payment->id,
-                'snap_token' => $snapToken,
                 'amount' => $payment->amount,
                 'invoice_number' => $payment->invoice_number
             ]);
@@ -120,35 +110,28 @@ class PaymentController extends Controller
             ->first();
 
         if ($existingPayment) {
-            $snapToken = $this->midtransService->createSnapToken($existingPayment);
-
-            if ($snapToken) {
-                return response()->json([
-                    'status' => 'success',
-                    'payment_id' => $existingPayment->id,
-                    'snap_token' => $snapToken,
-                    'amount' => $existingPayment->amount,
-                    'invoice_number' => $existingPayment->invoice_number
-                ]);
-            }
+            return response()->json([
+                'status' => 'success',
+                'payment_id' => $existingPayment->id,
+                'amount' => $existingPayment->amount,
+                'invoice_number' => $existingPayment->invoice_number
+            ]);
         }
 
         // Create new payment
         try {
-            $payment = $this->midtransService->createPayment($user, null, $course);
-            $snapToken = $this->midtransService->createSnapToken($payment);
-
-            if (!$snapToken) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to create payment token'
-                ], 500);
-            }
+            $payment = new Payment();
+            $payment->user_id = $user->id;
+            $payment->course_id = $course->id;
+            $payment->amount = $course->price;
+            $payment->status = 'pending';
+            $payment->invoice_number = 'INV-' . strtoupper(uniqid());
+            $payment->expires_at = now()->addMinutes(60);
+            $payment->save();
 
             return response()->json([
                 'status' => 'success',
                 'payment_id' => $payment->id,
-                'snap_token' => $snapToken,
                 'amount' => $payment->amount,
                 'invoice_number' => $payment->invoice_number
             ]);
@@ -197,35 +180,28 @@ class PaymentController extends Controller
             ->first();
 
         if ($existingPayment) {
-            $snapToken = $this->midtransService->createSnapToken($existingPayment);
-
-            if ($snapToken) {
-                return response()->json([
-                    'status' => 'success',
-                    'payment_id' => $existingPayment->id,
-                    'snap_token' => $snapToken,
-                    'amount' => $existingPayment->amount,
-                    'invoice_number' => $existingPayment->invoice_number
-                ]);
-            }
+            return response()->json([
+                'status' => 'success',
+                'payment_id' => $existingPayment->id,
+                'amount' => $existingPayment->amount,
+                'invoice_number' => $existingPayment->invoice_number
+            ]);
         }
 
         // Create new payment
         try {
-            $payment = $this->midtransService->createPayment($user, null, null, $test);
-            $snapToken = $this->midtransService->createSnapToken($payment);
-
-            if (!$snapToken) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to create payment token'
-                ], 500);
-            }
+            $payment = new Payment();
+            $payment->user_id = $user->id;
+            $payment->test_id = $test->id;
+            $payment->amount = $test->price;
+            $payment->status = 'pending';
+            $payment->invoice_number = 'INV-' . strtoupper(uniqid());
+            $payment->expires_at = now()->addMinutes(60);
+            $payment->save();
 
             return response()->json([
                 'status' => 'success',
                 'payment_id' => $payment->id,
-                'snap_token' => $snapToken,
                 'amount' => $payment->amount,
                 'invoice_number' => $payment->invoice_number
             ]);
@@ -246,26 +222,27 @@ class PaymentController extends Controller
     /**
      * Get payment status
      */
-    public function getPaymentStatus(Payment $payment)
+    public function getPaymentStatus(Request $request, Payment $payment)
     {
         $user = Auth::user();
 
         if ($payment->user_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized access to payment'
             ], 403);
-        }
-
-        $midtransStatus = null;
-        if ($payment->midtrans_order_id) {
-            $midtransStatus = $this->midtransService->getTransactionStatus($payment->midtrans_order_id);
         }
 
         return response()->json([
             'status' => 'success',
-            'payment' => $payment->load(['module', 'course']),
-            'midtrans_status' => $midtransStatus
+            'data' => [
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+                'amount' => $payment->amount,
+                'invoice_number' => $payment->invoice_number,
+                'created_at' => $payment->created_at,
+                'expires_at' => $payment->expires_at
+            ]
         ]);
     }
 
@@ -276,25 +253,10 @@ class PaymentController extends Controller
     {
         $user = Auth::user();
 
-        $query = Payment::where('user_id', $user->id)
+        $payments = Payment::where('user_id', $user->id)
             ->with(['module', 'course'])
-            ->orderBy('created_at', 'desc');
-
-        // Filter by status if provided
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by date range if provided
-        if ($request->has('from_date')) {
-            $query->whereDate('created_at', '>=', $request->from_date);
-        }
-
-        if ($request->has('to_date')) {
-            $query->whereDate('created_at', '<=', $request->to_date);
-        }
-
-        $payments = $query->paginate($request->get('per_page', 10));
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
         return response()->json([
             'status' => 'success',
@@ -305,35 +267,25 @@ class PaymentController extends Controller
     /**
      * Cancel a pending payment
      */
-    public function cancel(Payment $payment)
+    public function cancel(Request $request, Payment $payment)
     {
         $user = Auth::user();
 
         if ($payment->user_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized access to payment'
             ], 403);
         }
 
         if ($payment->status !== 'pending') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Payment cannot be cancelled'
+                'message' => 'Only pending payments can be cancelled'
             ], 400);
         }
 
-        // Try to cancel via Midtrans API first
-        $cancelled = $this->midtransService->cancelPayment($payment);
-
-        if (!$cancelled) {
-            // If Midtrans cancellation fails, cancel locally
-            $payment->update([
-                'status' => 'cancelled',
-                'admin_notes' => 'Cancelled by user (local)',
-                'status_updated_at' => now()
-            ]);
-        }
+        $payment->update(['status' => 'cancelled']);
 
         return response()->json([
             'status' => 'success',
@@ -342,65 +294,45 @@ class PaymentController extends Controller
     }
 
     /**
-     * Payment finish redirect (called by Midtrans after payment)
+     * Payment finish redirect
      */
     public function finish(Request $request, Payment $payment)
     {
-        // This is called when user finishes payment on Midtrans page
-        $status = $request->get('transaction_status', 'pending');
-
-        Log::info('Payment finish redirect', [
-            'payment_id' => $payment->id,
-            'transaction_status' => $status,
-            'params' => $request->all()
+        // Basic redirect handler for payment completion
+        // This can be used by other payment gateways
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment processed',
+            'payment_status' => $payment->status
         ]);
-
-        $redirectUrl = '/dashboard';
-
-        if ($payment->module_id) {
-            $redirectUrl = "/modules/{$payment->module_id}";
-        } elseif ($payment->course_id) {
-            $redirectUrl = "/courses/{$payment->course_id}";
-        } elseif ($payment->test_id) {
-            $redirectUrl = "/tests/{$payment->test_id}";
-        }
-
-        $message = match($status) {
-            'settlement', 'capture' => 'Payment completed successfully! Access has been granted.',
-            'pending' => 'Payment is being processed. Please wait for confirmation.',
-            'deny', 'cancel', 'expire' => 'Payment was not completed. Please try again.',
-            default => 'Payment status updated. Please check your payment history.'
-        };
-
-        return redirect($redirectUrl)->with('payment_message', $message);
     }
 
     /**
-     * Get payment statistics for user
+     * Get payment statistics for authenticated user
      */
-    public function stats()
+    public function stats(Request $request)
     {
         $user = Auth::user();
 
-        $stats = [
-            'total_payments' => Payment::where('user_id', $user->id)->count(),
-            'completed_payments' => Payment::where('user_id', $user->id)->where('status', 'completed')->count(),
-            'pending_payments' => Payment::where('user_id', $user->id)->where('status', 'pending')->count(),
-            'failed_payments' => Payment::where('user_id', $user->id)->where('status', 'failed')->count(),
-            'total_spent' => Payment::where('user_id', $user->id)->where('status', 'completed')->sum('amount'),
-            'modules_purchased' => Payment::where('user_id', $user->id)
-                ->where('status', 'completed')
-                ->whereNotNull('module_id')
-                ->count(),
-            'courses_purchased' => Payment::where('user_id', $user->id)
-                ->where('status', 'completed')
-                ->whereNotNull('course_id')
-                ->count()
-        ];
+        $totalSpent = Payment::where('user_id', $user->id)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $totalTransactions = Payment::where('user_id', $user->id)
+            ->where('status', 'paid')
+            ->count();
+
+        $pendingPayments = Payment::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->count();
 
         return response()->json([
             'status' => 'success',
-            'stats' => $stats
+            'data' => [
+                'total_spent' => $totalSpent,
+                'total_transactions' => $totalTransactions,
+                'pending_payments' => $pendingPayments
+            ]
         ]);
     }
 }

@@ -13,7 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\StudyController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\MidtransWebhookController;
+use App\Http\Controllers\DuitkuPaymentController;
 use App\Http\Controllers\CoinController;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -21,9 +21,8 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 Route::post('/check-phone', [AuthController::class, 'checkPhone']);
 
-// Midtrans webhook (no authentication required)
-Route::post('/midtrans/webhook', [MidtransWebhookController::class, 'handleWebhook']);
-Route::post('/midtrans/test-webhook', [MidtransWebhookController::class, 'testWebhook']);
+Route::post('/duitku/callback', [DuitkuPaymentController::class, 'callback']);
+Route::get('/duitku/return', [DuitkuPaymentController::class, 'return']);
 
 // Payment finish redirect (no authentication required)
 Route::get('/payments/{payment}/finish', [PaymentController::class, 'finish'])->name('payment.finish');
@@ -95,8 +94,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{payment}/cancel', [PaymentController::class, 'cancel']);
     });
 
-    // Module purchase routes
-    Route::post('/modules/{module}/purchase', [PaymentController::class, 'purchaseModule']);
+    // Duitku Payment routes
+    Route::prefix('duitku')->group(function () {
+        Route::get('/payment-methods', [DuitkuPaymentController::class, 'getPaymentMethods']);
+        Route::post('/modules/{module}/purchase', [DuitkuPaymentController::class, 'purchaseModule']);
+        Route::post('/courses/{course}/purchase', [DuitkuPaymentController::class, 'purchaseCourse']);
+        Route::post('/tryouts/{test}/purchase', [DuitkuPaymentController::class, 'purchaseTryout']);
+        Route::get('/payments/{payment}/status', [DuitkuPaymentController::class, 'checkStatus']);
+    });
 
     // Coin routes
     Route::prefix('coins')->group(function () {

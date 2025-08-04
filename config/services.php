@@ -13,6 +13,13 @@ return [
     |
     */
 
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -34,22 +41,13 @@ return [
         ],
     ],
 
-    'xendit' => [
-        'secret_key' => env('XENDIT_SECRET_KEY'),
-        'public_key' => env('XENDIT_PUBLIC_KEY'),
-        'webhook_token' => env('XENDIT_WEBHOOK_TOKEN'),
-        'base_url' => env('XENDIT_BASE_URL', 'https://api.xendit.co'),
-    ],
-
-    'midtrans' => [
-        'server_key' => env('MIDTRANS_SERVER_KEY'),
-        'client_key' => env('MIDTRANS_CLIENT_KEY'),
-        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
-        'snap_url' => env('MIDTRANS_IS_PRODUCTION', false)
-            ? 'https://app.midtrans.com/snap/v1/transactions'
-            : 'https://app.sandbox.midtrans.com/snap/v1/transactions',
-        'api_url' => env('MIDTRANS_IS_PRODUCTION', false)
-            ? 'https://api.midtrans.com/v2'
-            : 'https://api.sandbox.midtrans.com/v2',
+    'duitku' => [
+        'merchant_code' => env('DUITKU_MERCHANT_CODE'),
+        'api_key' => env('DUITKU_API_KEY'),
+        'callback_url' => env('DUITKU_CALLBACK_URL'),
+        'return_url' => env('DUITKU_RETURN_URL'),
+        'sandbox_url' => env('DUITKU_SANDBOX_URL'),
+        'production_url' => env('DUITKU_PRODUCTION_URL'),
+        'environment' => env('DUITKU_ENVIRONMENT', 'sandbox'),
     ],
 ];

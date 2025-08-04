@@ -17,12 +17,10 @@ function App() {
     return (
         <AuthProvider>
             <Routes>
-                {/* Auth Routes - No Layout */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
 
-                {/* Protected Routes with Layout */}
                 <Route
                     path="/"
                     element={
