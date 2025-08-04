@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Spin, Empty, Alert, Select, Input, Button, Space, Typography, Tabs } from 'antd';
-import { SearchOutlined, FilterOutlined, ReloadOutlined, TrophyOutlined } from '@ant-design/icons';
+import React, {useState, useEffect} from 'react';
+import {Row, Col, Spin, Empty, Alert, Select, Input, Space, Typography, Tabs} from 'antd';
+import {SearchOutlined, TrophyOutlined} from '@ant-design/icons';
 import TryoutCard from './TryoutCard';
-import axios from 'axios';
+import api from '../../utils/axios';
 
-const { Title } = Typography;
-const { Option } = Select;
-const { Search } = Input;
+const {Title} = Typography;
+const {Option} = Select;
+const {Search} = Input;
 
 const TryoutList = () => {
     const [tryouts, setTryouts] = useState([]);
@@ -14,8 +14,6 @@ const TryoutList = () => {
     const [error, setError] = useState(null);
     const [filters, setFilters] = useState({
         category: 'all',
-        difficulty: 'all',
-        type: 'all',
         search: ''
     });
 
@@ -27,16 +25,11 @@ const TryoutList = () => {
         setLoading(true);
         setError(null);
         try {
-            const params = new URLSearchParams();
-            if (filters.category !== 'all') params.append('category', filters.category);
-            if (filters.difficulty !== 'all') params.append('difficulty', filters.difficulty);
-            if (filters.type !== 'all') params.append('type', filters.type);
-
-            const response = await axios.get(`/api/tryouts?${params.toString()}`);
+            const response = await api.get(`/tryouts`, {params: filters});
+            console.log(response);
 
             let filteredTryouts = response.data.tryouts || response.data;
 
-            // Apply search filter on frontend
             if (filters.search) {
                 filteredTryouts = filteredTryouts.filter(tryout =>
                     tryout.title.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -57,22 +50,18 @@ const TryoutList = () => {
         setTryouts(prevTryouts =>
             prevTryouts.map(tryout =>
                 tryout.id === tryoutId
-                    ? { ...tryout, isAccessibleBy: true, access_status: 'active' }
+                    ? {...tryout, isAccessibleBy: true, access_status: 'active'}
                     : tryout
             )
         );
     };
 
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
+        setFilters(prev => ({...prev, [key]: value}));
     };
 
     const handleSearch = (value) => {
-        setFilters(prev => ({ ...prev, search: value }));
-    };
-
-    const handleRefresh = () => {
-        fetchTryouts();
+        setFilters(prev => ({...prev, search: value}));
     };
 
     const renderTabContent = (filterType) => {
@@ -99,8 +88,8 @@ const TryoutList = () => {
 
         if (loading) {
             return (
-                <div style={{ textAlign: 'center', padding: '50px 0' }}>
-                    <Spin size="large" />
+                <div style={{textAlign: 'center', padding: '50px 0'}}>
+                    <Spin size="large"/>
                 </div>
             );
         }
@@ -112,11 +101,6 @@ const TryoutList = () => {
                     description={error}
                     type="error"
                     showIcon
-                    action={
-                        <Button size="small" onClick={handleRefresh}>
-                            Coba Lagi
-                        </Button>
-                    }
                 />
             );
         }
@@ -164,45 +148,30 @@ const TryoutList = () => {
             key: 'accessible',
             label: `Dapat Diakses (${tryouts.filter(t => t.isAccessibleBy).length})`,
             children: renderTabContent('accessible')
-        },
-        {
-            key: 'tni',
-            label: `TNI (${tryouts.filter(t => t.category?.toLowerCase() === 'tni').length})`,
-            children: renderTabContent('tni')
-        },
-        {
-            key: 'polri',
-            label: `POLRI (${tryouts.filter(t => t.category?.toLowerCase() === 'polri').length})`,
-            children: renderTabContent('polri')
-        },
-        {
-            key: 'kedinasan',
-            label: `Kedinasan (${tryouts.filter(t => t.category?.toLowerCase() === 'kedinasan').length})`,
-            children: renderTabContent('kedinasan')
         }
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '24px' }}>
+        <div style={{padding: '24px'}}>
+            <div style={{marginBottom: '24px'}}>
                 <Title level={2}>
-                    <TrophyOutlined style={{ marginRight: 8 }} />
+                    <TrophyOutlined style={{marginRight: 8}}/>
                     Tryout Online
                 </Title>
 
                 {/* Filters */}
-                <Space size="middle" style={{ marginBottom: 16 }} wrap>
+                <Space size="middle" style={{marginBottom: 16}} wrap>
                     <Search
                         placeholder="Cari tryout..."
                         allowClear
-                        style={{ width: 250 }}
+                        style={{width: 250}}
                         onSearch={handleSearch}
-                        prefix={<SearchOutlined />}
+                        prefix={<SearchOutlined/>}
                     />
 
                     <Select
                         placeholder="Kategori"
-                        style={{ width: 150 }}
+                        style={{width: 150}}
                         value={filters.category}
                         onChange={(value) => handleFilterChange('category', value)}
                     >
@@ -211,38 +180,6 @@ const TryoutList = () => {
                         <Option value="POLRI">POLRI</Option>
                         <Option value="KEDINASAN">Kedinasan</Option>
                     </Select>
-
-                    <Select
-                        placeholder="Tingkat Kesulitan"
-                        style={{ width: 150 }}
-                        value={filters.difficulty}
-                        onChange={(value) => handleFilterChange('difficulty', value)}
-                    >
-                        <Option value="all">Semua Level</Option>
-                        <Option value="easy">Mudah</Option>
-                        <Option value="medium">Sedang</Option>
-                        <Option value="hard">Sulit</Option>
-                    </Select>
-
-                    <Select
-                        placeholder="Tipe Tryout"
-                        style={{ width: 150 }}
-                        value={filters.type}
-                        onChange={(value) => handleFilterChange('type', value)}
-                    >
-                        <Option value="all">Semua Tipe</Option>
-                        <Option value="practice">Latihan</Option>
-                        <Option value="simulation">Simulasi</Option>
-                        <Option value="mock_test">Mock Test</Option>
-                    </Select>
-
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={handleRefresh}
-                        disabled={loading}
-                    >
-                        Refresh
-                    </Button>
                 </Space>
             </div>
 

@@ -32,7 +32,7 @@ import {
 // Import all screen components
 import AllCourses from './courses/AllCourses';
 import MyCourses from './courses/MyCourses';
-import Tryout from './tryout/Tryout';
+import TryoutList from './tryout/TryoutList';
 import QuestionBank from './practice/QuestionBank';
 import Achievements from './achievements/Achievements';
 import StudySchedule from './schedule/StudySchedule';
@@ -133,33 +133,33 @@ export default function Dashboard() {
         {
             key: '3',
             icon: <FileTextOutlined/>,
-            label: 'Tryout & Simulasi',
-            children: [
-                {
-                    key: '3-1',
-                    label: 'Tryout TNI',
-                },
-                {
-                    key: '3-2',
-                    label: 'Tryout POLRI',
-                },
-                {
-                    key: '3-3',
-                    label: 'Tryout CPNS',
-                },
-                {
-                    key: '3-4',
-                    label: 'Tryout BUMN',
-                },
-                {
-                    key: '3-5',
-                    label: 'Simulasi CAT',
-                },
-                {
-                    key: '3-6',
-                    label: 'Riwayat Tryout',
-                },
-            ],
+            label: 'Tryout',
+            // children: [
+            //     {
+            //         key: '3-1',
+            //         label: 'Tryout TNI',
+            //     },
+            //     {
+            //         key: '3-2',
+            //         label: 'Tryout POLRI',
+            //     },
+            //     {
+            //         key: '3-3',
+            //         label: 'Tryout CPNS',
+            //     },
+            //     {
+            //         key: '3-4',
+            //         label: 'Tryout BUMN',
+            //     },
+            //     {
+            //         key: '3-5',
+            //         label: 'Simulasi CAT',
+            //     },
+            //     {
+            //         key: '3-6',
+            //         label: 'Riwayat Tryout',
+            //     },
+            // ],
         },
         // {
         //     key: '4',
@@ -479,8 +479,8 @@ export default function Dashboard() {
                 );
 
             // Tryout sections
-            case '3-1':
-                return <Tryout/>;
+            case '3':
+                return <TryoutList/>;
             case '3-2':
             case '3-3':
             case '3-4':

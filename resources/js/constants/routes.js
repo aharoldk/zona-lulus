@@ -8,12 +8,18 @@ export const ROUTES = {
   // Main routes
   DASHBOARD: '/',
 
+  // Tryout routes
+  TRYOUTS: '/tryouts',
+  TRYOUT_START: '/tryouts/start',
+  TRYOUT_RESULT: '/tryouts/:id/result',
+
   // API routes
   API: {
     REGISTER: '/api/register',
     LOGIN: '/api/login',
     LOGOUT: '/api/logout',
     FORGOT_PASSWORD: '/api/forgot-password',
+    TRYOUTS: '/api/tryouts',
   }
 };
 

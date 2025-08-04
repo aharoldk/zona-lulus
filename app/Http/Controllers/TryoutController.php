@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Payment;
 
 class TryoutController extends Controller
 {
@@ -15,132 +16,48 @@ class TryoutController extends Controller
     public function index(Request $request)
     {
         try {
-            // Return static sample data to fix the 500 error
-            $sampleTests = [
-                [
-                    'id' => 1,
-                    'title' => 'Tryout TNI - Paket Lengkap 2024',
-                    'description' => 'Simulasi tes masuk TNI dengan soal-soal terbaru dan sistem penilaian yang akurat sesuai standar TNI.',
-                    'category' => 'tni',
-                    'time_limit' => 120,
-                    'questions_count' => 100,
-                    'attempts_allowed' => 3,
-                    'price' => 75000,
-                    'price_formatted' => 'Rp 75.000',
-                    'difficulty' => 'Menengah',
-                    'participants_count' => 1845,
-                    'average_score' => 76.5,
-                    'is_active' => true,
-                    'is_free' => false,
-                    'show_result' => true,
-                    'randomize_questions' => true,
-                    'created_at' => '2024-01-15T00:00:00.000Z',
-                    'updated_at' => '2024-01-15T00:00:00.000Z'
-                ],
-                [
-                    'id' => 2,
-                    'title' => 'Tryout TNI - Matematika Dasar',
-                    'description' => 'Fokus pada materi matematika dasar yang sering keluar dalam tes TNI.',
-                    'category' => 'tni',
-                    'time_limit' => 60,
-                    'questions_count' => 50,
-                    'attempts_allowed' => 5,
-                    'price' => 0,
-                    'price_formatted' => 'Gratis',
-                    'difficulty' => 'Mudah',
-                    'participants_count' => 2340,
-                    'average_score' => 82.3,
-                    'is_active' => true,
-                    'is_free' => true,
-                    'show_result' => true,
-                    'randomize_questions' => false,
-                    'created_at' => '2024-01-15T00:00:00.000Z',
-                    'updated_at' => '2024-01-15T00:00:00.000Z'
-                ],
-                [
-                    'id' => 3,
-                    'title' => 'Tryout POLRI - Akademi Kepolisian',
-                    'description' => 'Simulasi lengkap tes masuk POLRI dengan materi psikotes dan akademik.',
-                    'category' => 'polri',
-                    'time_limit' => 150,
-                    'questions_count' => 120,
-                    'attempts_allowed' => 2,
-                    'price' => 85000,
-                    'price_formatted' => 'Rp 85.000',
-                    'difficulty' => 'Sulit',
-                    'participants_count' => 1567,
-                    'average_score' => 74.2,
-                    'is_active' => true,
-                    'is_free' => false,
-                    'show_result' => true,
-                    'randomize_questions' => true,
-                    'created_at' => '2024-01-15T00:00:00.000Z',
-                    'updated_at' => '2024-01-15T00:00:00.000Z'
-                ],
-                [
-                    'id' => 4,
-                    'title' => 'Tryout CPNS - SKD 2024',
-                    'description' => 'Tes Seleksi Kompetensi Dasar CPNS dengan materi TWK, TIU, dan TKP.',
-                    'category' => 'cpns',
-                    'time_limit' => 100,
-                    'questions_count' => 110,
-                    'attempts_allowed' => 3,
-                    'price' => 0,
-                    'price_formatted' => 'Gratis',
-                    'difficulty' => 'Menengah',
-                    'participants_count' => 3421,
-                    'average_score' => 78.9,
-                    'is_active' => true,
-                    'is_free' => true,
-                    'show_result' => true,
-                    'randomize_questions' => true,
-                    'created_at' => '2024-01-15T00:00:00.000Z',
-                    'updated_at' => '2024-01-15T00:00:00.000Z'
-                ]
-            ];
-
-            // Apply category filter
-            $filteredTests = $sampleTests;
-            if ($request->has('category') && $request->category !== 'all') {
-                $filteredTests = array_filter($filteredTests, function($test) use ($request) {
-                    return $test['category'] === $request->category;
-                });
-            }
-
-            // Apply search filter
-            if ($request->has('search') && !empty($request->search)) {
-                $search = strtolower($request->search);
-                $filteredTests = array_filter($filteredTests, function($test) use ($search) {
-                    return strpos(strtolower($test['title']), $search) !== false ||
-                           strpos(strtolower($test['description']), $search) !== false;
-                });
-            }
-
-            // Reset array keys
-            $filteredTests = array_values($filteredTests);
-
-            return response()->json([
-                'success' => true,
-                'data' => $filteredTests
-            ]);
-
-            // TODO: Replace above static data with database queries once we fix database issues
-            /*
             $query = Test::where('is_active', true);
 
             if ($request->has('category') && $request->category !== 'all') {
-                $query->where('category', $request->category);
+                $query->where('category', strtolower($request->category));
             }
 
             if ($request->has('search') && !empty($request->search)) {
-                $query->where(function($q) use ($request) {
-                    $q->where('title', 'LIKE', '%' . $request->search . '%')
-                      ->orWhere('description', 'LIKE', '%' . $request->search . '%');
+                $searchTerm = strtolower($request->search);
+                $query->where(function($q) use ($searchTerm) {
+                    $q->whereRaw('LOWER(title) LIKE ?', ['%' . $searchTerm . '%'])
+                      ->orWhereRaw('LOWER(description) LIKE ?', ['%' . $searchTerm . '%']);
                 });
             }
 
             $tests = $query->orderBy('created_at', 'desc')->get();
-            */
+
+            // Transform the data to match frontend expectations
+            $transformedTests = $tests->map(function($test) {
+                return [
+                    'id' => $test->id,
+                    'code' => $test->code,
+                    'title' => $test->title,
+                    'description' => $test->description,
+                    'category' => $test->category,
+                    'time_limit' => $test->time_limit,
+                    'attempts_allowed' => $test->attempts_allowed ?? 1,
+                    'price' => $test->price ?? 0,
+                    'is_active' => $test->is_active,
+                    'is_free' => ($test->price ?? 0) == 0,
+                    'show_result' => $test->show_result ?? true,
+                    'randomize_questions' => $test->randomize_questions ?? false,
+                    'isAccessibleBy' => $this->checkUserAccess($test),
+                    'created_at' => $test->created_at,
+                    'updated_at' => $test->updated_at
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $transformedTests,
+                'tryouts' => $transformedTests // For backward compatibility
+            ]);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -152,42 +69,153 @@ class TryoutController extends Controller
     }
 
     /**
+     * Check if user has access to the test
+     */
+    private function checkUserAccess($test)
+    {
+        $user = Auth::user();
+
+        // Free tests are always accessible to authenticated users
+        if ($test->price == 0) {
+            return true;
+        }
+
+        // Check if user has active payment for this test
+//        $hasActivePayment = $this->hasActivePayment($user, $test);
+//
+//        if ($hasActivePayment) {
+//            return true;
+//        }
+
+        return false;
+    }
+
+    /**
+     * Check if user has active payment for the test
+     */
+    private function hasActivePayment($user, $test)
+    {
+        return Payment::where('user_id', $user->id)
+            ->where('test_id', $test->id)
+            ->where('status', 'completed')
+            ->exists();
+    }
+
+    /**
+     * Check direct payment records as fallback
+     */
+    private function checkDirectPayment($user, $test)
+    {
+        // Check if there's a completed payment for this test
+        $payment = Payment::where('user_id', $user->id)
+            ->where('test_id', $test->id)
+            ->where('status', 'completed')
+            ->first();
+
+        if (!$payment) {
+            return false;
+        }
+
+        // Additional checks can be added here:
+        // - Check if payment is not refunded
+        // - Check if access hasn't expired
+        // - Check if payment amount matches current test price
+
+        return true;
+    }
+
+    /**
+     * Get user access status for the test
+     */
+    private function getUserAccessStatus($test)
+    {
+        if (!Auth::check()) {
+            return $test->price == 0 ? 'active' : 'locked';
+        }
+
+        $user = Auth::user();
+
+        // Free tests are always active
+        if ($test->price == 0) {
+            return 'active';
+        }
+
+        // Check payment status
+        $payment = Payment::where('user_id', $user->id)
+            ->where('test_id', $test->id)
+            ->latest()
+            ->first();
+
+        if (!$payment) {
+            return 'not_purchased';
+        }
+
+        switch ($payment->status) {
+            case 'completed':
+                return 'active';
+            case 'pending':
+                return 'pending';
+            case 'failed':
+                return 'payment_failed';
+            case 'refunded':
+                return 'refunded';
+            default:
+                return 'locked';
+        }
+    }
+
+    /**
      * Get user's test attempts history
      */
     public function getUserAttempts(Request $request)
     {
         try {
-            // Return static sample data for user attempts
-            $sampleAttempts = [
-                [
-                    'id' => 1,
-                    'test_id' => 1,
-                    'test_title' => 'Tryout TNI - Paket Lengkap 2024',
-                    'category' => 'tni',
-                    'score' => 85,
-                    'time_taken' => 105,
-                    'status' => 'completed',
-                    'rank' => 245,
-                    'date_formatted' => '20 Juni 2024',
-                    'created_at' => '2024-06-20T10:30:00.000Z'
-                ],
-                [
-                    'id' => 2,
-                    'test_id' => 2,
-                    'test_title' => 'Tryout TNI - Matematika Dasar',
-                    'category' => 'tni',
-                    'score' => 92,
-                    'time_taken' => 45,
-                    'status' => 'completed',
-                    'rank' => 87,
-                    'date_formatted' => '18 Juni 2024',
-                    'created_at' => '2024-06-18T14:15:00.000Z'
-                ]
-            ];
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            $user = Auth::user();
+
+            $query = TestAttempt::with('test')
+                ->where('user_id', $user->id);
+
+            // Apply filters if provided
+            if ($request->has('category') && $request->category !== 'all') {
+                $query->whereHas('test', function($q) use ($request) {
+                    $q->where('category', strtolower($request->category));
+                });
+            }
+
+            if ($request->has('status') && $request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+
+            $attempts = $query->orderBy('created_at', 'desc')->get();
+
+            // Transform the data
+            $transformedAttempts = $attempts->map(function($attempt) {
+                return [
+                    'id' => $attempt->id,
+                    'test_id' => $attempt->test_id,
+                    'test_title' => $attempt->test->title ?? 'Unknown Test',
+                    'category' => $attempt->test->category ?? 'unknown',
+                    'score' => $attempt->score ?? 0,
+                    'time_taken' => $attempt->time_taken ?? 0,
+                    'status' => $attempt->status,
+                    'rank' => $attempt->rank ?? null,
+                    'date_formatted' => $attempt->created_at->format('d F Y'),
+                    'created_at' => $attempt->created_at,
+                    'started_at' => $attempt->started_at,
+                    'completed_at' => $attempt->completed_at,
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'data' => $sampleAttempts
+                'data' => $transformedAttempts
             ]);
         } catch (\Exception $e) {
             return response()->json([

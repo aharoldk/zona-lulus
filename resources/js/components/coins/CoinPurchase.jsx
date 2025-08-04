@@ -3,10 +3,9 @@ import { Card, Button, Row, Col, Typography, Badge, Modal, Form, Select, message
 import {
     CurrencyDollarIcon,
     StarIcon,
-    CheckCircleIcon,
-    CreditCardIcon
+    CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -27,7 +26,7 @@ const CoinPurchase = () => {
 
     const fetchPackages = async () => {
         try {
-            const response = await axios.get('/api/coins/packages');
+            const response = await api.get('/coins/packages');
             setPackages(response.data.packages);
         } catch (error) {
             message.error('Gagal memuat paket koin');
@@ -38,7 +37,7 @@ const CoinPurchase = () => {
 
     const fetchUserBalance = async () => {
         try {
-            const response = await axios.get('/api/coins/balance');
+            const response = await api.get('/coins/balance');
             setUserBalance(response.data.coins);
         } catch (error) {
             console.error('Failed to fetch balance:', error);
@@ -53,7 +52,7 @@ const CoinPurchase = () => {
     const processPurchase = async (values) => {
         setPurchasing(true);
         try {
-            const response = await axios.post('/api/coins/purchase', {
+            const response = await api.post('/coins/purchase', {
                 package: selectedPackage.id,
                 payment_method: values.payment_method
             });

@@ -6,8 +6,8 @@ import {
     ArrowDownIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import moment from 'moment';
+import api from '../../utils/axios';
 
 const { Title } = Typography;
 
@@ -23,7 +23,7 @@ const CoinBalance = () => {
 
     const fetchBalanceAndTransactions = async () => {
         try {
-            const response = await axios.get('/api/coins/balance');
+            const response = await api.get('/coins/balance');
             setBalance(response.data.coins);
             setTransactions(response.data.transactions);
         } catch (error) {

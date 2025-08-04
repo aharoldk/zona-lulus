@@ -20,19 +20,34 @@ import {
     ArrowLeftOutlined,
     ArrowRightOutlined
 } from '@ant-design/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 const { confirm } = Modal;
 
-export default function TryoutTest({ tryoutData, onBack, onFinish }) {
+export default function TryoutTest() {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    // Get tryout data from navigation state
+    const tryoutData = location.state?.tryoutData;
+
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [answers, setAnswers] = useState({});
-    const [timeLeft, setTimeLeft] = useState(tryoutData?.duration * 60 || 7200);
+    const [timeLeft, setTimeLeft] = useState(tryoutData?.time_limit * 60 || 7200);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Redirect if no tryout data
+    useEffect(() => {
+        if (!tryoutData) {
+            message.error('Data tryout tidak ditemukan. Kembali ke halaman tryout.');
+            navigate('/tryouts');
+        }
+    }, [tryoutData, navigate]);
 
     // Fetch questions from database
     useEffect(() => {
@@ -45,7 +60,39 @@ export default function TryoutTest({ tryoutData, onBack, onFinish }) {
                 const response = await api.get(`/questions/${tryoutData?.id}`);
 
                 if (response.data.success) {
-                    setQuestions(response.data.data);
+                    // Transform questions to ensure options are properly formatted
+                    const transformedQuestions = response.data.data.map(question => {
+                        let options = question.options;
+
+                        // Handle different option formats
+                        if (typeof options === 'string') {
+                            try {
+                                options = JSON.parse(options);
+                            } catch (e) {
+                                console.error('Failed to parse options JSON:', e);
+                                options = {};
+                            }
+                        }
+
+                        // Convert options object to array format for mapping
+                        const optionsArray = [];
+                        if (options && typeof options === 'object') {
+                            Object.entries(options).forEach(([key, value]) => {
+                                optionsArray.push({
+                                    key: key,
+                                    text: value
+                                });
+                            });
+                        }
+
+                        return {
+                            ...question,
+                            options: optionsArray
+                        };
+                    });
+
+                    setQuestions(transformedQuestions);
+                    console.log('Transformed questions:', transformedQuestions); // Debug log
                 } else {
                     setError('Failed to load questions');
                 }
@@ -128,13 +175,19 @@ export default function TryoutTest({ tryoutData, onBack, onFinish }) {
 
         setTimeout(() => {
             setIsSubmitting(false);
-            onFinish({
-                score,
-                totalQuestions: questions.length,
-                answeredQuestions: Object.keys(answers).length,
-                correctAnswers: correct,
-                timeUsed: (tryoutData?.duration * 60) - timeLeft,
-                answers
+            // Navigate to results page with result data
+            navigate('/tryouts/result', {
+                state: {
+                    resultData: {
+                        score,
+                        totalQuestions: questions.length,
+                        answeredQuestions: Object.keys(answers).length,
+                        correctAnswers: correct,
+                        timeUsed: (tryoutData?.time_limit * 60) - timeLeft,
+                        answers,
+                        tryoutData
+                    }
+                }
             });
         }, 2000);
     };
@@ -159,7 +212,7 @@ export default function TryoutTest({ tryoutData, onBack, onFinish }) {
         confirm({
             title: 'Keluar dari Tryout',
             content: 'Jika Anda keluar sekarang, progress akan hilang. Yakin ingin keluar?',
-            onOk: onBack,
+            onOk: () => navigate('/tryouts'),
             okText: 'Ya, Keluar',
             cancelText: 'Lanjut Tryout'
         });
@@ -197,7 +250,7 @@ export default function TryoutTest({ tryoutData, onBack, onFinish }) {
                     showIcon
                     style={{ marginBottom: '16px' }}
                 />
-                <Button type="primary" onClick={onBack}>
+                <Button type="primary" onClick={() => navigate('/tryouts')}>
                     Kembali
                 </Button>
             </div>
@@ -221,7 +274,7 @@ export default function TryoutTest({ tryoutData, onBack, onFinish }) {
                     showIcon
                     style={{ marginBottom: '16px' }}
                 />
-                <Button type="primary" onClick={onBack}>
+                <Button type="primary" onClick={() => navigate('/tryouts')}>
                     Kembali
                 </Button>
             </div>

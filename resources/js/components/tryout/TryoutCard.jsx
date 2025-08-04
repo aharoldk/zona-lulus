@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card, Button, Tag, Badge, Typography, Space, Modal, message, Tooltip } from 'antd';
 import {
     LockOutlined,
-    UnlockOutlined,
     CreditCardOutlined,
     ClockCircleOutlined,
     CheckCircleOutlined,
@@ -10,7 +9,8 @@ import {
     UserOutlined,
     QuestionCircleOutlined
 } from '@ant-design/icons';
-import { ROUTES } from '../../constants/routes';
+import { ROUTES, getRoute } from '../../constants/routes';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -20,6 +20,7 @@ const { Meta } = Card;
 const TryoutCard = ({ test, onPurchaseSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const navigate = useNavigate();
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -100,26 +101,17 @@ const TryoutCard = ({ test, onPurchaseSuccess }) => {
         return `${mins} menit`;
     };
 
-    const renderActionButton = () => {
-        if (test.is_free) {
-            return (
-                <Button
-                    type="primary"
-                    icon={<UnlockOutlined />}
-                    href={`${ROUTES.DASHBOARD}/tryouts/${test.id}/start`}
-                    block
-                >
-                    Mulai Tryout Gratis
-                </Button>
-            );
-        }
+    const handleStartTryout = (test) => {
+        navigate(ROUTES.TRYOUT_START, { state: { tryoutData: test } });
+    };
 
+    const renderActionButton = (test) => {
         if (test.isAccessibleBy) {
             return (
                 <Button
                     type="primary"
                     icon={<CheckCircleOutlined />}
-                    href={`${ROUTES.DASHBOARD}/tryouts/${test.id}/start`}
+                    onClick={() => handleStartTryout(test)}
                     block
                 >
                     Mulai Tryout
@@ -145,19 +137,25 @@ const TryoutCard = ({ test, onPurchaseSuccess }) => {
         return dayjs().isBefore(dayjs(test.registration_deadline));
     };
 
-    const isExamScheduled = () => {
-        return test.exam_date && dayjs().isBefore(dayjs(test.exam_date));
-    };
-
     return (
         <>
             <Card
                 hoverable
-                style={{ marginBottom: 16 }}
+                style={{
+                    marginBottom: 16,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}
+                bodyStyle={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}
                 cover={
                     <div style={{
                         height: 200,
-                        background: `linear-gradient(135deg, ${test.category === 'TNI' ? '#1890ff' : test.category === 'POLRI' ? '#722ed1' : '#52c41a'} 0%, #001529 100%)`,
+                        background: `linear-gradient(135deg, #1890ff 0%, #0050b3 100%)`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -202,73 +200,75 @@ const TryoutCard = ({ test, onPurchaseSuccess }) => {
                         )}
                     </div>
                 }
-                actions={[renderActionButton()]}
+                actions={[renderActionButton(test)]}
             >
-                <Meta
-                    title={
-                        <div style={{ marginBottom: 8 }}>
-                            <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
-                                {test.title}
-                            </Title>
-                            {!test.is_free && (
-                                <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                                    {formatPrice(test.price)}
-                                </Text>
-                            )}
-                        </div>
-                    }
-                    description={
-                        <div>
-                            <Paragraph ellipsis={{ rows: 2 }} style={{ marginBottom: 12 }}>
-                                {test.description}
-                            </Paragraph>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <Meta
+                        title={
+                            <div style={{ marginBottom: 8 }}>
+                                <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
+                                    {test.title}
+                                </Title>
+                                {!test.is_free && (
+                                    <Text strong style={{ color: '#1890ff', fontSize: '16px' }}>
+                                        {formatPrice(test.price)}
+                                    </Text>
+                                )}
+                            </div>
+                        }
+                        description={
+                            <div style={{ flex: 1 }}>
+                                <Paragraph ellipsis={{ rows: 2 }} style={{ marginBottom: 12 }}>
+                                    {test.description}
+                                </Paragraph>
 
-                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                <Space size="small" wrap>
-                                    {test.difficulty && (
-                                        <Tag color={getDifficultyColor(test.difficulty)}>
-                                            {test.difficulty}
+                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                    <Space size="small" wrap>
+                                        {test.difficulty && (
+                                            <Tag color={getDifficultyColor(test.difficulty)}>
+                                                {test.difficulty}
+                                            </Tag>
+                                        )}
+                                        {test.time_limit && (
+                                            <Tag icon={<ClockCircleOutlined />} color="blue">
+                                                {formatDuration(test.time_limit)}
+                                            </Tag>
+                                        )}
+                                        {test.questions_count && (
+                                            <Tag icon={<QuestionCircleOutlined />} color="purple">
+                                                {test.questions_count} soal
+                                            </Tag>
+                                        )}
+                                    </Space>
+
+                                    {test.attempts_allowed > 0 && (
+                                        <Tag color="orange">
+                                            Maksimal {test.attempts_allowed} percobaan
                                         </Tag>
                                     )}
-                                    {test.time_limit && (
-                                        <Tag icon={<ClockCircleOutlined />} color="blue">
-                                            {formatDuration(test.time_limit)}
+
+                                    {test.participants_count > 0 && (
+                                        <Tag icon={<UserOutlined />} color="blue">
+                                            {test.participants_count} peserta
                                         </Tag>
                                     )}
-                                    {test.questions_count && (
-                                        <Tag icon={<QuestionCircleOutlined />} color="purple">
-                                            {test.questions_count} soal
-                                        </Tag>
+
+                                    {test.exam_date && (
+                                        <div>
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                Jadwal: {dayjs(test.exam_date).format('DD MMM YYYY HH:mm')}
+                                            </Text>
+                                        </div>
+                                    )}
+
+                                    {test.registration_deadline && !isRegistrationOpen() && (
+                                        <Tag color="red">Pendaftaran Ditutup</Tag>
                                     )}
                                 </Space>
-
-                                {test.attempts_allowed > 0 && (
-                                    <Tag color="orange">
-                                        Maksimal {test.attempts_allowed} percobaan
-                                    </Tag>
-                                )}
-
-                                {test.participants_count > 0 && (
-                                    <Tag icon={<UserOutlined />} color="green">
-                                        {test.participants_count} peserta
-                                    </Tag>
-                                )}
-
-                                {test.exam_date && (
-                                    <div>
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            Jadwal: {dayjs(test.exam_date).format('DD MMM YYYY HH:mm')}
-                                        </Text>
-                                    </div>
-                                )}
-
-                                {test.registration_deadline && !isRegistrationOpen() && (
-                                    <Tag color="red">Pendaftaran Ditutup</Tag>
-                                )}
-                            </Space>
-                        </div>
-                    }
-                />
+                            </div>
+                        }
+                    />
+                </div>
             </Card>
 
             <Modal

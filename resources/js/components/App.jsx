@@ -7,6 +7,7 @@ import Register from './auth/Register';
 import ForgotPassword from './auth/ForgotPassword';
 import Dashboard from './Dashboard';
 import CoinWallet from './coins/CoinWallet';
+import TryoutTest from './tryout/TryoutTest';
 import ProtectedRoute from './ProtectedRoute';
 import NotFound from './NotFound';
 
@@ -34,6 +35,7 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="/tryouts/start" element={<TryoutTest />} />
 
                 <Route path="*" element={<NotFound />} />
             </Routes>

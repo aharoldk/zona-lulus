@@ -10,10 +10,10 @@ class Test extends Model
     use HasFactory;
 
     protected $fillable = [
+        'code',
         'title',
         'description',
         'category',
-        'difficulty',
         'time_limit',
         'attempts_allowed',
         'price',
@@ -21,10 +21,8 @@ class Test extends Model
         'is_free',
         'show_result',
         'randomize_questions',
-        'type',
         'exam_date',
         'registration_deadline',
-        'location'
     ];
 
     protected $casts = [
