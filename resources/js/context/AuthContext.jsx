@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
 
     const login = async (credentials) => {
         try {
-            const { data } = await axios.post('/login', credentials);
+            const { data } = await api.post('/login', credentials);
             localStorage.setItem('token', data.access_token);
             setToken(data.access_token);
             setUser(data.user);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
 
     const register = async (userData) => {
         try {
-            const { data } = await axios.post('/register', userData);
+            const { data } = await api.post('/register', userData);
             localStorage.setItem('token', data.access_token);
             setToken(data.access_token);
             setUser(data.user);
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         try {
-            await axios.post('/logout');
+            await api.post('/logout');
         } finally {
             localStorage.removeItem('token');
             setToken(null);

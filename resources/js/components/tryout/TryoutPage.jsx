@@ -8,7 +8,7 @@ const {Title} = Typography;
 const {Option} = Select;
 const {Search} = Input;
 
-const TryoutList = () => {
+const TryoutPage = () => {
     const [tryouts, setTryouts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -192,4 +192,4 @@ const TryoutList = () => {
     );
 };
 
-export default TryoutList;
+export default TryoutPage;

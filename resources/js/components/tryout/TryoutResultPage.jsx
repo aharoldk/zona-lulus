@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Card,
     Button,
@@ -26,19 +27,39 @@ import api from '../../utils/axios';
 
 const { Title, Text, Paragraph } = Typography;
 
-export default function TryoutResult({ result, tryoutData, onRetake, onBackToList, onViewDiscussion }) {
+export default function TryoutResultPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
     const [questions, setQuestions] = useState([]);
     const [categoryBreakdown, setCategoryBreakdown] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Get data from navigation state
+    const resultData = location.state?.resultData;
+    console.log('resultData:', resultData); // Debug log to check data
+    const tryoutData = resultData?.tryoutData;
+
+    // Safely destructure with default values to prevent undefined errors
     const {
         score,
-        totalQuestions,
-        answeredQuestions,
-        correctAnswers,
-        timeUsed,
-        answers
-    } = result;
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        time_taken: timeUsed,
+        answers = [],
+        wrong_answers: wrongAnswers
+    } = resultData || {};
+
+    // Calculate derived values
+    const answeredQuestions = totalQuestions - (wrongAnswers || 0);
+    const unansweredQuestions = totalQuestions - answeredQuestions;
+
+    // Redirect if no result data
+    useEffect(() => {
+        if (!resultData) {
+            console.log('No resultData found, redirecting to /tryouts');
+            navigate('/tryouts');
+        }
+    }, [resultData, navigate]);
 
     // Fetch questions to calculate category breakdown
     useEffect(() => {
@@ -158,9 +179,21 @@ export default function TryoutResult({ result, tryoutData, onRetake, onBackToLis
     };
 
     const performance = getPerformanceLevel(score);
-    const wrongAnswers = answeredQuestions - correctAnswers;
-    const unansweredQuestions = totalQuestions - answeredQuestions;
     const recommendations = getRecommendations();
+
+    // Action handlers
+    const handleRetake = () => {
+        navigate('/tryouts');
+    };
+
+    const handleBackToList = () => {
+        navigate('/tryouts');
+    };
+
+    const handleViewDiscussion = () => {
+        // TODO: Navigate to discussion page
+        console.log('View discussion for tryout:', tryoutData?.id);
+    };
 
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -356,7 +389,7 @@ export default function TryoutResult({ result, tryoutData, onRetake, onBackToLis
                             icon={<FileTextOutlined />}
                             block
                             size="large"
-                            onClick={onViewDiscussion}
+                            onClick={handleViewDiscussion}
                         >
                             Lihat Pembahasan
                         </Button>
@@ -366,7 +399,7 @@ export default function TryoutResult({ result, tryoutData, onRetake, onBackToLis
                             icon={<ReloadOutlined />}
                             block
                             size="large"
-                            onClick={onRetake}
+                            onClick={handleRetake}
                         >
                             Ulangi Tryout
                         </Button>
@@ -385,7 +418,7 @@ export default function TryoutResult({ result, tryoutData, onRetake, onBackToLis
                             icon={<HomeOutlined />}
                             block
                             size="large"
-                            onClick={onBackToList}
+                            onClick={handleBackToList}
                         >
                             Kembali ke Daftar
                         </Button>

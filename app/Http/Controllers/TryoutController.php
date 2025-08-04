@@ -7,6 +7,7 @@ use App\Models\Test;
 use App\Models\TestAttempt;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Payment;
+use App\Models\Question;
 
 class TryoutController extends Controller
 {
@@ -261,27 +262,157 @@ class TryoutController extends Controller
     public function submitTest(Request $request, $attemptId)
     {
         try {
-            // Return a sample test submission response
+            $request->validate([
+                'tryout_id' => 'required|integer',
+                'answers' => 'required|array',
+                'time_used' => 'required|integer',
+                'completed_at' => 'required|date'
+            ]);
+
+            $user = auth()->user();
+            $testId = $request->tryout_id;
+            $userAnswers = $request->answers;
+            $timeUsed = $request->time_used;
+            $completedAt = $request->completed_at;
+
+            // Find or create the test attempt
+            $testAttempt = TestAttempt::where('user_id', $user->id)
+                ->where('test_id', $testId)
+                ->where('id', $attemptId)
+                ->first();
+
+            if (!$testAttempt) {
+                // Create new attempt if not found
+                $testAttempt = TestAttempt::create([
+                    'user_id' => $user->id,
+                    'test_id' => $testId,
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                ]);
+            }
+
+            // Get all questions for this test
+            $questions = Question::where('test_id', $testId)->get();
+
+            if ($questions->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No questions found for this test'
+                ], 404);
+            }
+
+            // Calculate score
+            $totalQuestions = $questions->count();
+            $correctAnswers = 0;
+            $totalPoints = 0;
+            $earnedPoints = 0;
+            $detailedResults = [];
+
+            foreach ($questions as $index => $question) {
+                $userAnswer = $userAnswers[$index] ?? null;
+                $isCorrect = $userAnswer === $question->correct_answer;
+
+                if ($isCorrect) {
+                    $correctAnswers++;
+                    $earnedPoints += $question->points ?? 1;
+                }
+
+                $totalPoints += $question->points ?? 1;
+
+                // Store detailed result for each question
+                $detailedResults[] = [
+                    'question_id' => $question->id,
+                    'user_answer' => $userAnswer,
+                    'correct_answer' => $question->correct_answer,
+                    'is_correct' => $isCorrect,
+                    'points' => $isCorrect ? ($question->points ?? 1) : 0
+                ];
+            }
+
+            // Calculate percentage score
+            $percentageScore = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100, 2) : 0;
+
+            // Update test attempt with results
+            $testAttempt->update([
+                'score' => $percentageScore,
+                'status' => 'completed',
+                'completed_at' => $completedAt,
+                'time_taken' => $timeUsed,
+                'answers' => $userAnswers
+            ]);
+
+            // Calculate rank (position among all attempts for this test)
+            $rank = TestAttempt::where('test_id', $testId)
+                ->where('score', '>', $percentageScore)
+                ->where('status', 'completed')
+                ->count() + 1;
+
+            // Prepare response data
             $result = [
-                'attempt_id' => (int)$attemptId,
-                'score' => rand(60, 95),
-                'total_questions' => 100,
-                'correct_answers' => rand(60, 95),
-                'time_taken' => rand(80, 120),
-                'rank' => rand(100, 500),
+                'attempt_id' => $testAttempt->id,
+                'score' => $percentageScore,
+                'total_questions' => $totalQuestions,
+                'correct_answers' => $correctAnswers,
+                'wrong_answers' => $totalQuestions - $correctAnswers,
+                'time_taken' => $timeUsed,
+                'total_points' => $totalPoints,
+                'earned_points' => $earnedPoints,
+                'rank' => $rank,
+                'percentage' => $percentageScore,
+                'status' => 'completed',
+                'completed_at' => $testAttempt->completed_at,
+                'detailed_results' => $detailedResults,
                 'message' => 'Test submitted successfully'
             ];
+
+            // Update user's coin balance (optional - reward for completing test)
+            $coinReward = $this->calculateCoinReward($percentageScore);
+            if ($coinReward > 0) {
+                $user->increment('coins', $coinReward);
+                $result['coin_reward'] = $coinReward;
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => $result
             ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
+            \Log::error('Error submitting test: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'attempt_id' => $attemptId,
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to submit test',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
+    }
+
+    /**
+     * Calculate coin reward based on score
+     */
+    private function calculateCoinReward($score)
+    {
+        if ($score >= 90) {
+            return 100; // Excellent performance
+        } elseif ($score >= 80) {
+            return 75;  // Good performance
+        } elseif ($score >= 70) {
+            return 50;  // Decent performance
+        } elseif ($score >= 60) {
+            return 25;  // Passing score
+        }
+
+        return 10; // Participation reward
     }
 }

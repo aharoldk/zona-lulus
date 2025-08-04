@@ -26,7 +26,7 @@ import api from '../../utils/axios';
 const { Title, Text, Paragraph } = Typography;
 const { confirm } = Modal;
 
-export default function TryoutTest() {
+export default function TryoutTestPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -60,7 +60,6 @@ export default function TryoutTest() {
                 const response = await api.get(`/questions/${tryoutData?.id}`);
 
                 if (response.data.success) {
-                    // Transform questions to ensure options are properly formatted
                     const transformedQuestions = response.data.data.map(question => {
                         let options = question.options;
 
@@ -160,36 +159,66 @@ export default function TryoutTest() {
     };
 
     // Handle submit tryout
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         setIsSubmitting(true);
 
-        // Calculate score
-        let correct = 0;
-        questions.forEach((question, index) => {
-            if (answers[index] === question.correct_answer) {
-                correct++;
-            }
-        });
-
-        const score = Math.round((correct / questions.length) * 100);
-
-        setTimeout(() => {
-            setIsSubmitting(false);
-            // Navigate to results page with result data
-            navigate('/tryouts/result', {
-                state: {
-                    resultData: {
-                        score,
-                        totalQuestions: questions.length,
-                        answeredQuestions: Object.keys(answers).length,
-                        correctAnswers: correct,
-                        timeUsed: (tryoutData?.time_limit * 60) - timeLeft,
-                        answers,
-                        tryoutData
-                    }
-                }
+        try {
+            // Convert answers object to array format
+            const answersArray = [];
+            questions.forEach((question, index) => {
+                answersArray[index] = answers[index] || null;
             });
-        }, 2000);
+
+            // Prepare submission data
+            const submissionData = {
+                tryout_id: tryoutData.id,
+                answers: answersArray, // Now sending as array instead of object
+                time_used: (tryoutData?.time_limit * 60) - timeLeft,
+                completed_at: new Date().toISOString()
+            };
+
+            console.log('Submitting tryout:', submissionData);
+
+            // Submit to backend
+            const response = await api.post(`/tryouts/attempts/${tryoutData.id}/submit`, submissionData);
+
+            if (response.data.success) {
+                const resultData = response.data.data;
+
+                message.success('Tryout berhasil diselesaikan!');
+
+                // Navigate to results page with backend result data
+                navigate('/tryouts/result', {
+                    state: {
+                        resultData: {
+                            ...resultData,
+                            tryoutData,
+                            timeUsed: submissionData.time_used
+                        }
+                    }
+                });
+            } else {
+                throw new Error(response.data.message || 'Failed to submit tryout');
+            }
+
+        } catch (error) {
+            console.error('Error submitting tryout:', error);
+
+            // Handle different error scenarios
+            if (error.response?.status === 401) {
+                message.error('Sesi Anda telah berakhir. Silakan login kembali.');
+                navigate('/login');
+            } else if (error.response?.status === 422) {
+                message.error('Data yang dikirim tidak valid. Silakan coba lagi.');
+            } else if (error.response?.status === 404) {
+                message.error('Tryout tidak ditemukan.');
+                navigate('/tryouts');
+            } else {
+                message.error('Terjadi kesalahan saat mengirim hasil. Silakan coba lagi.');
+            }
+
+            setIsSubmitting(false);
+        }
     };
 
     // Confirm submit
