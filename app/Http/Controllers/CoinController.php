@@ -9,15 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
-class CoinController extends Controller
-{
-    protected $midtransService;
-
-    public function __construct(MidtransService $midtransService)
-    {
-        $this->midtransService = $midtransService;
-    }
-
+class CoinController extends Controller {
     /**
      * Get available coin packages
      */
@@ -90,47 +82,12 @@ class CoinController extends Controller
                 'bonus' => $coinPackage->bonus
             ];
 
-            // Check if Midtrans is configured
-            if (!$this->midtransService->isConfigured()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Layanan pembayaran belum dikonfigurasi'
-                ], 500);
-            }
-
-            // Create payment record
-            $payment = $this->midtransService->createCoinPayment(
-                $user,
-                $package['coins'],
-                $package['price'],
-                $package
-            );
-
-            // Create Snap token
-            $snapToken = $this->midtransService->createCoinSnapToken($payment);
-
-            if (!$snapToken) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal membuat token pembayaran'
-                ], 500);
-            }
-
-            Log::info('Coin purchase initiated', [
-                'user_id' => $user->id,
-                'payment_id' => $payment->id,
-                'package_id' => $packageId,
-                'coins' => $package['coins'],
-                'price' => $package['price']
-            ]);
-
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'payment_id' => $payment->id,
-                    'snap_token' => $snapToken,
-                    'order_id' => $payment->midtrans_order_id,
-                    'amount' => $payment->amount,
+                    'payment_id' => "",
+                    'order_id' => "",
+                    'amount' => 0,
                     'coins' => $package['coins'],
                     'bonus_coins' => $package['bonus'],
                     'total_coins' => $package['coins'] + $package['bonus']

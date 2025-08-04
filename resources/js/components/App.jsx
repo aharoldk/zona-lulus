@@ -9,9 +9,11 @@ import DashboardPage from './pages/DashboardPage';
 import TryoutPage from './tryout/TryoutPage.jsx';
 import TryoutTestPage from './tryout/TryoutTestPage.jsx';
 import TryoutResultPage from './tryout/TryoutResultPage.jsx';
+import TopUp from './coins/TopUp';
 import ProtectedRoute from './ProtectedRoute';
 import NotFound from './NotFound';
 import AppLayout from './layouts/AppLayout';
+import PaymentPage from "./payment/PaymentPage.jsx";
 
 function App() {
     return (
@@ -32,7 +34,10 @@ function App() {
                     <Route path="/tryouts" element={<TryoutPage />} />
                     <Route path="/tryouts/start" element={<TryoutTestPage />} />
                     <Route path="/tryouts/result" element={<TryoutResultPage />} />
+                    <Route path="/topup" element={<TopUp />} />
                 </Route>
+
+                <Route path="/payment" element={<PaymentPage />} />
 
                 {/* Not Found */}
                 <Route path="*" element={<NotFound />} />

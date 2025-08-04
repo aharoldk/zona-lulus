@@ -3,29 +3,37 @@
 namespace App\Services;
 
 use App\Models\Payment;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Exception;
+
+// Include the Duitku PHP SDK
+require_once base_path('vendor/duitkupg/duitku-php/Duitku.php');
 
 class DuitkuService
 {
     private $merchantCode;
     private $apiKey;
-    private $baseUrl;
     private $environment;
+    private $config;
 
     public function __construct()
     {
         $this->merchantCode = config('services.duitku.merchant_code');
         $this->apiKey = config('services.duitku.api_key');
         $this->environment = config('services.duitku.environment', 'sandbox');
-        $this->baseUrl = $this->environment === 'production'
-            ? config('services.duitku.production_url')
-            : config('services.duitku.sandbox_url');
+
+        // Create Duitku Config object
+        $this->config = new \Duitku\Config(
+            $this->apiKey,
+            $this->merchantCode,
+            $this->environment === 'sandbox', // isSandboxMode
+            true, // isSanitizedMode
+            true  // duitkuLogs
+        );
     }
 
     /**
-     * Create payment transaction
+     * Create payment transaction using official Duitku SDK
      */
     public function createTransaction($paymentData)
     {
@@ -36,74 +44,93 @@ class DuitkuService
             $customerDetails = $paymentData['customer_details'];
             $itemDetails = $paymentData['item_details'];
 
-            // Generate signature for authentication
-            $signature = $this->generateSignature($orderId, $amount);
+            // Prepare customer detail for Duitku format
+            $customerDetail = [
+                'firstName' => $customerDetails['first_name'] ?? $customerDetails['name'],
+                'lastName' => $customerDetails['last_name'] ?? '',
+                'email' => $customerDetails['email'],
+                'phoneNumber' => $customerDetails['phone'],
+                'billingAddress' => [
+                    'firstName' => $customerDetails['first_name'] ?? $customerDetails['name'],
+                    'lastName' => $customerDetails['last_name'] ?? '',
+                    'address' => $customerDetails['address'] ?? '',
+                    'city' => $customerDetails['city'] ?? '',
+                    'postalCode' => $customerDetails['postal_code'] ?? '',
+                    'phone' => $customerDetails['phone'],
+                    'countryCode' => 'ID'
+                ],
+                'shippingAddress' => [
+                    'firstName' => $customerDetails['first_name'] ?? $customerDetails['name'],
+                    'lastName' => $customerDetails['last_name'] ?? '',
+                    'address' => $customerDetails['address'] ?? '',
+                    'city' => $customerDetails['city'] ?? '',
+                    'postalCode' => $customerDetails['postal_code'] ?? '',
+                    'phone' => $customerDetails['phone'],
+                    'countryCode' => 'ID'
+                ]
+            ];
 
-            $payload = [
-                'merchantCode' => $this->merchantCode,
+            // Item details
+            $itemDetail = [
+                [
+                    'name' => $itemDetails['name'],
+                    'price' => $amount,
+                    'quantity' => 1
+                ]
+            ];
+
+            // Prepare payload for Duitku API
+            $params = [
                 'paymentAmount' => $amount,
                 'paymentMethod' => $paymentMethod,
                 'merchantOrderId' => $orderId,
                 'productDetails' => $itemDetails['name'],
                 'additionalParam' => '',
-                'merchantUserInfo' => json_encode($customerDetails),
+                'merchantUserInfo' => '',
                 'customerVaName' => $customerDetails['name'],
                 'email' => $customerDetails['email'],
                 'phoneNumber' => $customerDetails['phone'],
-                'itemDetails' => json_encode([
-                    [
-                        'name' => $itemDetails['name'],
-                        'price' => $amount,
-                        'quantity' => 1
-                    ]
-                ]),
-                'customerDetail' => json_encode($customerDetails),
+                'itemDetails' => $itemDetail,
+                'customerDetail' => $customerDetail,
                 'callbackUrl' => config('services.duitku.callback_url'),
                 'returnUrl' => config('services.duitku.return_url'),
-                'signature' => $signature,
                 'expiryPeriod' => 1440 // 24 hours in minutes
             ];
 
-            $response = Http::timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
-                ->post($this->baseUrl . '/transaction/request', $payload);
+            // Create transaction using Duitku API
+            $response = \Duitku\Api::createInvoice($params, $this->config);
 
-            if ($response->successful()) {
-                $result = $response->json();
+            // Parse JSON response
+            $responseData = json_decode($response, true);
 
-                if (isset($result['statusCode']) && $result['statusCode'] === '00') {
+            if ($responseData && isset($responseData['statusCode'])) {
+                if ($responseData['statusCode'] === '00') {
                     return [
                         'success' => true,
-                        'data' => $result,
-                        'payment_url' => $result['paymentUrl'] ?? null,
-                        'reference' => $result['reference'] ?? null,
-                        'va_number' => $result['vaNumber'] ?? null,
+                        'data' => $responseData,
+                        'payment_url' => $responseData['paymentUrl'] ?? null,
+                        'reference' => $responseData['reference'] ?? null,
+                        'va_number' => $responseData['vaNumber'] ?? null,
                     ];
                 } else {
                     Log::error('Duitku transaction creation failed', [
-                        'response' => $result,
-                        'payload' => $payload
+                        'response' => $responseData
                     ]);
 
                     return [
                         'success' => false,
-                        'message' => $result['statusMessage'] ?? 'Transaction creation failed',
-                        'data' => $result
+                        'message' => $responseData['statusMessage'] ?? 'Transaction creation failed',
+                        'data' => $responseData
                     ];
                 }
             } else {
-                Log::error('Duitku API request failed', [
-                    'status' => $response->status(),
-                    'response' => $response->body(),
-                    'payload' => $payload
+                Log::error('Duitku API returned invalid response', [
+                    'response' => $response
                 ]);
 
                 return [
                     'success' => false,
-                    'message' => 'Failed to connect to payment gateway',
+                    'message' => 'Invalid response from payment gateway',
                     'data' => null
                 ];
             }
@@ -122,40 +149,27 @@ class DuitkuService
     }
 
     /**
-     * Check transaction status
+     * Check transaction status using official Duitku SDK
      */
     public function checkTransactionStatus($orderId)
     {
         try {
-            $signature = $this->generateStatusSignature($orderId);
+            $response = \Duitku\Api::transactionStatus($orderId, $this->config);
 
-            $payload = [
-                'merchantCode' => $this->merchantCode,
-                'merchantOrderId' => $orderId,
-                'signature' => $signature
-            ];
+            // Parse JSON response
+            $responseData = json_decode($response, true);
 
-            $response = Http::timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
-                ->post($this->baseUrl . '/transaction/status', $payload);
-
-            if ($response->successful()) {
-                $result = $response->json();
-
+            if ($responseData) {
                 return [
                     'success' => true,
-                    'data' => $result,
-                    'status' => $result['statusCode'] ?? null,
-                    'amount' => $result['amount'] ?? null,
+                    'data' => $responseData,
+                    'status' => $responseData['statusCode'] ?? null,
+                    'amount' => $responseData['amount'] ?? null,
                 ];
             } else {
                 Log::error('Duitku status check failed', [
-                    'status' => $response->status(),
-                    'response' => $response->body(),
-                    'order_id' => $orderId
+                    'order_id' => $orderId,
+                    'response' => $response
                 ]);
 
                 return [
@@ -188,9 +202,15 @@ class DuitkuService
             $amount = $callbackData['amount'] ?? null;
             $signature = $callbackData['signature'] ?? null;
 
-            // Verify signature
-            if (!$this->verifyCallbackSignature($orderId, $amount, $signature)) {
-                Log::warning('Invalid Duitku callback signature', $callbackData);
+            // Verify signature manually since SDK doesn't have validateSignature method
+            $expectedSignature = md5($this->merchantCode . $orderId . $amount . $this->apiKey);
+
+            if ($signature !== $expectedSignature) {
+                Log::warning('Invalid Duitku callback signature', [
+                    'expected' => $expectedSignature,
+                    'received' => $signature,
+                    'callback_data' => $callbackData
+                ]);
                 return [
                     'success' => false,
                     'message' => 'Invalid signature'
@@ -201,10 +221,11 @@ class DuitkuService
             $payment = Payment::where('order_id', $orderId)->first();
 
             if (!$payment) {
-                Log::warning('Payment not found for Duitku callback', [
+                Log::warning('Payment not found for callback', [
                     'order_id' => $orderId,
                     'callback_data' => $callbackData
                 ]);
+
                 return [
                     'success' => false,
                     'message' => 'Payment not found'
@@ -212,30 +233,36 @@ class DuitkuService
             }
 
             // Update payment status based on callback
-            $statusCode = $callbackData['resultCode'] ?? null;
-            $transactionStatus = $this->mapDuitkuStatus($statusCode);
+            $statusCode = $callbackData['statusCode'] ?? null;
 
-            $payment->update([
-                'transaction_id' => $callbackData['reference'] ?? null,
-                'transaction_status' => $transactionStatus,
-                'status' => $transactionStatus === 'paid' ? 'completed' : 'failed',
-                'paid_at' => $transactionStatus === 'paid' ? now() : null,
-                'metadata' => array_merge($payment->metadata ?? [], [
-                    'duitku_callback' => $callbackData,
-                    'callback_received_at' => now()->toISOString()
-                ])
-            ]);
+            if ($statusCode === '00') {
+                $payment->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'payment_reference' => $callbackData['reference'] ?? null,
+                    'callback_data' => json_encode($callbackData)
+                ]);
 
-            Log::info('Duitku payment status updated', [
-                'order_id' => $orderId,
-                'status' => $transactionStatus,
-                'payment_id' => $payment->id
-            ]);
+                Log::info('Payment confirmed via Duitku callback', [
+                    'order_id' => $orderId,
+                    'amount' => $amount
+                ]);
+            } else {
+                $payment->update([
+                    'status' => 'failed',
+                    'callback_data' => json_encode($callbackData)
+                ]);
+
+                Log::info('Payment failed via Duitku callback', [
+                    'order_id' => $orderId,
+                    'status_code' => $statusCode
+                ]);
+            }
 
             return [
                 'success' => true,
-                'message' => 'Payment status updated',
-                'payment' => $payment
+                'payment' => $payment,
+                'status' => $statusCode
             ];
 
         } catch (Exception $e) {
@@ -246,120 +273,43 @@ class DuitkuService
 
             return [
                 'success' => false,
-                'message' => 'Callback handling error: ' . $e->getMessage()
+                'message' => 'Callback handling error: ' . $e->getMessage(),
+                'data' => null
             ];
         }
     }
 
     /**
-     * Get available payment methods
+     * Get available payment methods from Duitku
      */
-    public function getPaymentMethods($amount)
+    public function getPaymentMethods($amount = 10000)
     {
         try {
-            $signature = $this->generatePaymentMethodSignature($amount);
+            $response = \Duitku\Api::getPaymentMethod($amount, $this->config);
 
-            $payload = [
-                'merchantcode' => $this->merchantCode,
-                'amount' => $amount,
-                'signature' => $signature
-            ];
+            // Parse JSON response
+            $responseData = json_decode($response, true);
 
-            $response = Http::timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
-                ->post($this->baseUrl . '/paymentmethod/getpaymentmethod', $payload);
-
-            if ($response->successful()) {
-                $result = $response->json();
-
+            if ($responseData && isset($responseData['paymentFee'])) {
                 return [
                     'success' => true,
-                    'data' => $result['paymentFee'] ?? [],
-                ];
-            } else {
-                Log::error('Failed to get Duitku payment methods', [
-                    'status' => $response->status(),
-                    'response' => $response->body()
-                ]);
-
-                return [
-                    'success' => false,
-                    'message' => 'Failed to get payment methods',
-                    'data' => []
+                    'data' => $responseData['paymentFee']
                 ];
             }
-        } catch (Exception $e) {
-            Log::error('Duitku payment methods error: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Payment methods error: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Failed to get payment methods',
+                'data' => null
+            ];
+        } catch (Exception $e) {
+            Log::error('Error getting payment methods: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Error getting payment methods: ' . $e->getMessage(),
+                'data' => null
             ];
         }
-    }
-
-    /**
-     * Generate signature for transaction request
-     */
-    private function generateSignature($orderId, $amount)
-    {
-        $string = $this->merchantCode . $orderId . $amount . $this->apiKey;
-        return md5($string);
-    }
-
-    /**
-     * Generate signature for status check
-     */
-    private function generateStatusSignature($orderId)
-    {
-        $string = $this->merchantCode . $orderId . $this->apiKey;
-        return md5($string);
-    }
-
-    /**
-     * Generate signature for payment methods
-     */
-    private function generatePaymentMethodSignature($amount)
-    {
-        $string = $this->merchantCode . $amount . $this->apiKey;
-        return md5($string);
-    }
-
-    /**
-     * Verify callback signature
-     */
-    private function verifyCallbackSignature($orderId, $amount, $signature)
-    {
-        $expectedSignature = md5($this->merchantCode . $amount . $orderId . $this->apiKey);
-        return hash_equals($expectedSignature, $signature);
-    }
-
-    /**
-     * Map Duitku status codes to internal status
-     */
-    private function mapDuitkuStatus($statusCode)
-    {
-        switch ($statusCode) {
-            case '00':
-                return 'paid';
-            case '01':
-                return 'pending';
-            case '02':
-                return 'failed';
-            default:
-                return 'unknown';
-        }
-    }
-
-    /**
-     * Format amount for Duitku (remove decimal places)
-     */
-    private function formatAmount($amount)
-    {
-        return (int) ($amount * 100); // Convert to smallest currency unit
     }
 }

@@ -55,7 +55,6 @@ class DuitkuPaymentController extends Controller
             $result = $this->duitkuService->handleCallback($callbackData);
 
             if ($result['success']) {
-                // Grant access to user if payment is successful
                 $payment = $result['payment'];
                 if ($payment->status === 'completed') {
                     $this->grantAccess($payment);
@@ -153,24 +152,173 @@ class DuitkuPaymentController extends Controller
     }
 
     /**
+     * Create a new payment
+     */
+    public function createPayment(Request $request)
+    {
+        try {
+            $request->validate([
+                'test_id' => 'nullable|exists:tests,id',
+                'amount' => 'required|numeric|min:1',
+                'payment_method' => 'required|string',
+                'description' => 'nullable|string'
+            ]);
+
+            $user = Auth::user();
+            $test = $request->test_id ? Test::find($request->test_id) : null;
+
+            // Create payment record
+            $payment = $this->createPaymentRecord($user, $test);
+
+            // Override amount if provided
+            if ($request->amount) {
+                $payment->update(['amount' => $request->amount]);
+            }
+
+            // Update description if provided
+            if ($request->description) {
+                $payment->update(['description' => $request->description]);
+            }
+
+            // Create Duitku transaction
+            $result = $this->createDuitkuTransaction($payment, $request->payment_method);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'payment_id' => $payment->id,
+                        'payment_url' => $result['payment_url'],
+                        'reference' => $result['reference'],
+                        'va_number' => $result['va_number'],
+                        'order_id' => $payment->order_id,
+                        'amount' => $payment->amount
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message']
+            ], 400);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Payment validation error', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Create payment error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+                'user_id' => Auth::id()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create payment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Inquiry payment status
+     */
+    public function inquiryPayment(Request $request)
+    {
+        try {
+            $request->validate([
+                'order_id' => 'required|string'
+            ]);
+
+            $payment = Payment::where('order_id', $request->order_id)->first();
+
+            if (!$payment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment not found'
+                ], 404);
+            }
+
+            // Check if user owns this payment
+            if ($payment->user_id !== Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $result = $this->duitkuService->checkTransactionStatus($payment->order_id);
+
+            if ($result['success']) {
+                // Update payment status if needed
+                $statusCode = $result['data']['statusCode'] ?? null;
+                $transactionStatus = $this->mapDuitkuStatus($statusCode);
+
+                if ($payment->transaction_status !== $transactionStatus) {
+                    $payment->update([
+                        'transaction_status' => $transactionStatus,
+                        'status' => $transactionStatus === 'paid' ? 'completed' : $payment->status
+                    ]);
+
+                    if ($transactionStatus === 'paid') {
+                        $this->grantAccess($payment);
+                    }
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'payment_id' => $payment->id,
+                        'order_id' => $payment->order_id,
+                        'status' => $payment->status,
+                        'transaction_status' => $transactionStatus,
+                        'amount' => $payment->amount,
+                        'payment_method' => $payment->payment_method,
+                        'created_at' => $payment->created_at,
+                        'paid_at' => $payment->paid_at,
+                        'expires_at' => $payment->expires_at
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message']
+            ], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Payment inquiry error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to inquiry payment status'
+            ], 500);
+        }
+    }
+
+    /**
      * Create payment record
      */
-    private function createPayment($user, $module = null, $course = null)
+    private function createPaymentRecord($user, $test = null)
     {
         $orderId = 'ORDER-' . time() . '-' . Str::random(8);
         $invoiceNumber = 'INV-' . date('YmdHis') . '-' . Str::random(6);
+        $paymentReference = 'REF-' . date('YmdHis') . '-' . Str::random(8);
 
-        $amount = $module ? $module->price : $course->price;
-        $description = $module
-            ? "Payment for module: {$module->title}"
-            : "Payment for course: {$course->title}";
+        $amount = $test ? $test->price : 0;
+        $description = $test
+            ? "Payment for test: {$test->title}"
+            : "Payment for services";
 
         return Payment::create([
             'user_id' => $user->getAuthIdentifier(),
-            'module_id' => $module?->id,
-            'course_id' => $course?->id,
             'invoice_number' => $invoiceNumber,
             'order_id' => $orderId,
+            'payment_reference' => $paymentReference,
             'amount' => $amount,
             'payment_method' => 'duitku',
             'status' => 'pending',
@@ -187,59 +335,6 @@ class DuitkuPaymentController extends Controller
     private function createDuitkuTransaction($payment, $paymentMethod)
     {
         $user = $payment->user;
-        $item = $payment->module ?? $payment->course;
-
-        $paymentData = [
-            'order_id' => $payment->order_id,
-            'amount' => (int) $payment->amount,
-            'payment_method' => $paymentMethod,
-            'customer_details' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '08123456789',
-                'address' => $user->address ?? 'Jakarta, Indonesia'
-            ],
-            'item_details' => [
-                'name' => $item->title,
-                'price' => (int) $payment->amount,
-                'quantity' => 1
-            ]
-        ];
-
-        return $this->duitkuService->createTransaction($paymentData);
-    }
-
-    /**
-     * Create payment record for tryout
-     */
-    private function createPaymentForTryout($user, Test $test)
-    {
-        $orderId = 'ORDER-' . time() . '-' . Str::random(8);
-        $invoiceNumber = 'INV-' . date('YmdHis') . '-' . Str::random(6);
-
-        $description = "Payment for tryout: {$test->title}";
-
-        return Payment::create([
-            'user_id' => $user->getAuthIdentifier(),
-            'test_id' => $test->id,
-            'invoice_number' => $invoiceNumber,
-            'order_id' => $orderId,
-            'amount' => $test->price,
-            'payment_method' => 'duitku',
-            'status' => 'pending',
-            'transaction_status' => 'pending',
-            'description' => $description,
-            'expires_at' => now()->addHours(24),
-            'metadata' => []
-        ]);
-    }
-
-    /**
-     * Create Duitku transaction for tryout
-     */
-    private function createDuitkuTransactionForTryout($payment, $paymentMethod)
-    {
-        $user = $payment->user;
         $test = $payment->test;
 
         $paymentData = [
@@ -248,12 +343,14 @@ class DuitkuPaymentController extends Controller
             'payment_method' => $paymentMethod,
             'customer_details' => [
                 'name' => $user->name,
+                'first_name' => explode(' ', $user->name)[0] ?? $user->name,
+                'last_name' => implode(' ', array_slice(explode(' ', $user->name), 1)) ?: '',
                 'email' => $user->email,
                 'phone' => $user->phone ?? '08123456789',
                 'address' => $user->address ?? 'Jakarta, Indonesia'
             ],
             'item_details' => [
-                'name' => $test->title,
+                'name' => $test ? $test->title : ($payment->description ?: 'Service Payment'),
                 'price' => (int) $payment->amount,
                 'quantity' => 1
             ]
@@ -267,29 +364,20 @@ class DuitkuPaymentController extends Controller
      */
     private function grantAccess($payment)
     {
-        if ($payment->module_id) {
-            // Grant module access logic here
-            // This would typically involve creating a user_module relationship
-            Log::info('Module access granted', [
-                'user_id' => $payment->user_id,
-                'module_id' => $payment->module_id,
-                'payment_id' => $payment->id
-            ]);
-        } elseif ($payment->course_id) {
-            // Grant course access logic here
-            // This would typically involve creating a user_course relationship
-            Log::info('Course access granted', [
-                'user_id' => $payment->user_id,
-                'course_id' => $payment->course_id,
-                'payment_id' => $payment->id
-            ]);
-        } elseif ($payment->test_id) {
+        if ($payment->test_id) {
             // Grant tryout access logic here
             // This would typically involve creating a user_test relationship
-            Log::info('Tryout access granted', [
+            Log::info('Test access granted', [
                 'user_id' => $payment->user_id,
                 'test_id' => $payment->test_id,
                 'payment_id' => $payment->id
+            ]);
+        } else {
+            // General service access granted
+            Log::info('Service access granted', [
+                'user_id' => $payment->user_id,
+                'payment_id' => $payment->id,
+                'description' => $payment->description
             ]);
         }
     }
@@ -308,122 +396,6 @@ class DuitkuPaymentController extends Controller
                 return 'failed';
             default:
                 return 'unknown';
-        }
-    }
-
-    /**
-     * Purchase a tryout using Duitku
-     */
-    public function purchaseTryout(Request $request, Test $test)
-    {
-        $request->validate([
-            'payment_method' => 'required|string'
-        ]);
-
-        $user = Auth::user();
-        $paymentMethod = $request->input('payment_method');
-
-        // Check if tryout requires payment
-        if ($test->is_free) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This tryout is free and does not require payment'
-            ], 400);
-        }
-
-        // Check if tryout is active
-        if (!$test->is_active) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This tryout is not currently available'
-            ], 400);
-        }
-
-        // Check registration deadline
-        if ($test->registration_deadline && now() > $test->registration_deadline) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Registration deadline has passed for this tryout'
-            ], 400);
-        }
-
-        // Check if user already has a completed payment for this tryout
-        $existingCompletedPayment = Payment::where('user_id', $user->getAuthIdentifier())
-            ->where('test_id', $test->id)
-            ->where('status', 'completed')
-            ->first();
-
-        if ($existingCompletedPayment) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You have already purchased access to this tryout'
-            ], 400);
-        }
-
-        // Check for existing pending payment
-        $existingPayment = Payment::where('user_id', $user->getAuthIdentifier())
-            ->where('test_id', $test->id)
-            ->where('status', 'pending')
-            ->where('expires_at', '>', now())
-            ->first();
-
-        if ($existingPayment) {
-            // Recreate payment URL for existing payment
-            $result = $this->createDuitkuTransactionForTryout($existingPayment, $paymentMethod);
-
-            if ($result['success']) {
-                return response()->json([
-                    'status' => 'success',
-                    'payment_id' => $existingPayment->id,
-                    'payment_url' => $result['payment_url'],
-                    'reference' => $result['reference'],
-                    'amount' => $existingPayment->amount,
-                    'invoice_number' => $existingPayment->invoice_number
-                ]);
-            }
-        }
-
-        // Create new payment
-        try {
-            $payment = $this->createPaymentForTryout($user, $test);
-            $result = $this->createDuitkuTransactionForTryout($payment, $paymentMethod);
-
-            if (!$result['success']) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $result['message']
-                ], 500);
-            }
-
-            // Update payment with Duitku reference
-            $payment->update([
-                'transaction_id' => $result['reference'],
-                'payment_channel' => $paymentMethod,
-                'metadata' => array_merge($payment->metadata ?? [], [
-                    'duitku_response' => $result['data']
-                ])
-            ]);
-
-            return response()->json([
-                'status' => 'success',
-                'payment_id' => $payment->id,
-                'payment_url' => $result['payment_url'],
-                'reference' => $result['reference'],
-                'va_number' => $result['va_number'] ?? null,
-                'amount' => $payment->amount,
-                'invoice_number' => $payment->invoice_number
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error creating Duitku payment for tryout', [
-                'user_id' => $user->getAuthIdentifier(),
-                'test_id' => $test->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to create payment'
-            ], 500);
         }
     }
 }

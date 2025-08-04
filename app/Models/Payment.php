@@ -12,9 +12,8 @@ class Payment extends Model
 
     protected $fillable = [
         'user_id',
-        'course_id',
-        'test_id',
         'invoice_number',
+        'payment_reference',
         'amount',
         'payment_method',
         'status',
@@ -56,11 +55,6 @@ class Payment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function course()
-    {
-        return $this->belongsTo(Course::class);
     }
 
     public function test()

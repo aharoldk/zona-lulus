@@ -7,25 +7,24 @@ import {
     Typography,
     Space,
     Divider,
-    Radio,
     message,
-    Modal,
-    Alert,
     Spin
 } from 'antd';
 import {
     DollarCircleOutlined,
     CheckCircleOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import api from '../../utils/axios';
+import { ROUTES } from '../../constants/routes';
 
 const { Title, Text } = Typography;
 
 export default function TopUp() {
     const [coinPackages, setCoinPackages] = useState([]);
     const [selectedPackage, setSelectedPackage] = useState(null);
-    const [loading, setLoading] = useState(false);
     const [packagesLoading, setPackagesLoading] = useState(true);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const navigate = useNavigate();
 
     // Load coin packages from API
     useEffect(() => {
@@ -35,23 +34,11 @@ export default function TopUp() {
     const loadCoinPackages = async () => {
         try {
             setPackagesLoading(true);
-            const response = await fetch('/api/coins/packages', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Loaded packages:', data.data); // Debug log
-                setCoinPackages(data.data);
-            } else {
-                message.error('Gagal memuat paket koin');
-            }
+            const response = await api.get(ROUTES.API.COINS_PACKAGES);
+            setCoinPackages(response.data.data);
         } catch (error) {
             console.error('Error loading coin packages:', error);
-            message.error('Terjadi kesalahan saat memuat paket koin');
+            message.error('Gagal memuat paket koin');
         } finally {
             setPackagesLoading(false);
         }
@@ -66,7 +53,6 @@ export default function TopUp() {
     };
 
     const handlePackageSelect = (pkg) => {
-        console.log('Selecting package:', pkg.id, pkg.name); // Debug log
         setSelectedPackage(pkg);
     };
 
@@ -75,59 +61,14 @@ export default function TopUp() {
             message.warning('Silakan pilih paket koin terlebih dahulu');
             return;
         }
-        setShowConfirmModal(true);
-    };
-
-    const handleConfirmPurchase = async () => {
-        setLoading(true);
-        try {
-            const response = await fetch('/api/coins/purchase', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    package_id: selectedPackage.id
-                })
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                setShowConfirmModal(false);
-
-                if (window.snap) {
-                    window.snap.pay(data.data.snap_token, {
-                        onSuccess: function(result) {
-                            message.success('Pembayaran berhasil! Koin telah ditambahkan ke akun Anda.');
-                            setSelectedPackage(null);
-                            // Refresh user data to update coin balance
-                            window.location.reload();
-                        },
-                        onPending: function(result) {
-                            message.info('Pembayaran sedang diproses. Anda akan diberitahu jika pembayaran berhasil.');
-                            setSelectedPackage(null);
-                        },
-                        onError: function(result) {
-                            message.error('Pembayaran gagal. Silakan coba lagi.');
-                        },
-                        onClose: function() {
-                            message.info('Anda menutup popup pembayaran sebelum menyelesaikan pembayaran');
-                        }
-                    });
-                } else {
-                    message.error('Sistem pembayaran tidak tersedia');
-                }
-            } else {
-                message.error(data.message || 'Terjadi kesalahan saat memproses pembayaran');
+        // Navigate to payment page
+        navigate(ROUTES.PAYMENT, {
+            state: {
+                amount: selectedPackage.price,
+                description: `Pembelian ${selectedPackage.coins.toLocaleString()} koin`,
+                packageId: selectedPackage.id
             }
-        } catch (error) {
-            console.error('Error purchasing coins:', error);
-            message.error('Terjadi kesalahan saat memproses pembayaran');
-        } finally {
-            setLoading(false);
-        }
+        });
     };
 
     if (packagesLoading) {
@@ -154,7 +95,6 @@ export default function TopUp() {
                         <Row gutter={[16, 16]}>
                             {coinPackages.map((pkg) => {
                                 const isSelected = selectedPackage?.id === pkg.id;
-                                console.log(`Package ${pkg.id} selected:`, isSelected); // Debug log
 
                                 return (
                                     <Col xs={12} sm={8} md={6} key={pkg.id}>
@@ -318,44 +258,6 @@ export default function TopUp() {
                     </Card>
                 </Col>
             </Row>
-
-            {/* Confirmation Modal */}
-            <Modal
-                title="Konfirmasi Pembelian"
-                open={showConfirmModal}
-                onOk={handleConfirmPurchase}
-                onCancel={() => setShowConfirmModal(false)}
-                confirmLoading={loading}
-                okText="Konfirmasi Pembayaran"
-                cancelText="Batal"
-            >
-                {selectedPackage && (
-                    <div>
-                        <Alert
-                            message="Perhatian"
-                            description="Pastikan data pembelian sudah benar sebelum melanjutkan ke pembayaran."
-                            type="warning"
-                            style={{ marginBottom: '16px' }}
-                        />
-
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text>Paket:</Text>
-                                <Text strong>
-                                    {selectedPackage.coins.toLocaleString()} Koin
-                                    {selectedPackage.bonus > 0 && ` (+${selectedPackage.bonus} Bonus)`}
-                                </Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text>Total Pembayaran:</Text>
-                                <Text strong style={{ color: '#1890ff' }}>
-                                    {formatCurrency(selectedPackage.price)}
-                                </Text>
-                            </div>
-                        </Space>
-                    </div>
-                )}
-            </Modal>
 
             <style jsx>{`
                 .selected-package {

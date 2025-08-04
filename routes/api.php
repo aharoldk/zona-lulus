@@ -24,6 +24,14 @@ Route::post('/check-phone', [AuthController::class, 'checkPhone']);
 Route::post('/duitku/callback', [DuitkuPaymentController::class, 'callback']);
 Route::get('/duitku/return', [DuitkuPaymentController::class, 'return']);
 
+// Duitku Payment Routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/payment/duitku/methods', [DuitkuPaymentController::class, 'getPaymentMethods']);
+    Route::post('/payment/duitku/create', [DuitkuPaymentController::class, 'createPayment']);
+    Route::get('/payment/duitku/{payment}/status', [DuitkuPaymentController::class, 'checkStatus']);
+    Route::post('/payment/duitku/inquiry', [DuitkuPaymentController::class, 'inquiryPayment']);
+});
+
 // Payment finish redirect (no authentication required)
 Route::get('/payments/{payment}/finish', [PaymentController::class, 'finish'])->name('payment.finish');
 
@@ -110,17 +118,4 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/balance', [CoinController::class, 'getBalance']);
         Route::get('/transactions', [CoinController::class, 'getTransactionHistory']);
     });
-});
-
-// Admin routes
-Route::prefix('admin')->group(function () {
-    Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard']);
-    Route::get('/users', [App\Http\Controllers\Admin\AdminController::class, 'users']);
-
-    // Payment management routes
-    Route::get('/payments', [App\Http\Controllers\Admin\PaymentController::class, 'index']);
-    Route::get('/payments/{id}', [App\Http\Controllers\Admin\PaymentController::class, 'show']);
-    Route::put('/payments/{id}/status', [App\Http\Controllers\Admin\PaymentController::class, 'updateStatus']);
-    Route::post('/payments/{id}/refund', [App\Http\Controllers\Admin\PaymentController::class, 'refund']);
-    Route::get('/payments/analytics', [App\Http\Controllers\Admin\PaymentController::class, 'analytics']);
 });

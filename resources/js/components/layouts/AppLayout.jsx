@@ -266,7 +266,7 @@ export default function AppLayout({children}) {
                     <Space size={isMobile ? "small" : "middle"}>
                         <Button
                             type="text"
-                            onClick={() => setSelectedKey('topup')}
+                            onClick={() => navigate('/topup')}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
